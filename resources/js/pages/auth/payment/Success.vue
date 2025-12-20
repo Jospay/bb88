@@ -1,19 +1,32 @@
 <script setup>
-import { defineProps } from "vue";
+import { defineProps, onMounted } from "vue"; // Added onMounted
 import { Head } from "@inertiajs/vue3";
 import logoIcon from "@/assets/logo.png";
 
-// Define the expected props, including the new 'teamName'
+// Define the constant key to match the Registration page
+const LOCAL_STORAGE_KEY = "teamRegistrationDraft";
+
 const props = defineProps({
     sessionId: {
         type: String,
         required: true,
     },
     teamName: {
-        // <-- New prop for the dynamic team name
         type: String,
         required: true,
     },
+});
+
+// Clear the registration draft only when this page is reached (after payment)
+onMounted(() => {
+    try {
+        if (localStorage.getItem(LOCAL_STORAGE_KEY)) {
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            console.log("Team registration draft cleared.");
+        }
+    } catch (e) {
+        console.error("Error clearing state from localStorage:", e);
+    }
 });
 </script>
 
@@ -28,13 +41,7 @@ const props = defineProps({
         <div class="relative mx-auto w-full max-w-[1500px] sm:px-10 px-5">
             <div class="mx-auto w-full max-w-[1320px] pb-10">
                 <div class="flex flex-col md:flex-row justify-between">
-                    <div>
-                        <!-- <img
-                            src="@/assets/landing-cinco-logo.png"
-                            class="mx-auto sm:h-[70px] sm:w-auto h-auto w-full pb-5"
-                            alt=""
-                        /> -->
-                    </div>
+                    <div></div>
 
                     <div
                         class="flex gap-5 flex-col sm:flex-row items-center justify-between"

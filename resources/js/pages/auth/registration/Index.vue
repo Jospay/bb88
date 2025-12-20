@@ -199,7 +199,6 @@ const registerTeam = async () => {
     validationErrors.value = {};
     isProcessingPayment.value = false;
 
-    // Combine and sanitize
     const allDetailUsers = allUsers.value.map((u) => ({
         ...u,
         mobileNumber: String(u.mobileNumber),
@@ -222,13 +221,14 @@ const registerTeam = async () => {
 
     try {
         const response = await axios.post("/api/register", payload);
-        clearFormState();
+
+        // REMOVED clearFormState() FROM HERE
+
         const checkoutUrl = response.data.checkout_url;
         if (checkoutUrl) {
             submitMessage.value =
                 "Registration successful! Redirecting to PayMongo for payment...";
-            isProcessingPayment.value = true; // 💡 change button text
-            // optional delay to show message before redirect
+            isProcessingPayment.value = true;
             setTimeout(() => {
                 window.location.href = checkoutUrl;
             }, 1500);

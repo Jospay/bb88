@@ -345,7 +345,7 @@ class RegistrationController extends Controller
                     $lastNumber = (int)$matches[1];
                 }
 
-                $qrCodeDirectory = resource_path('js/assets/' . self::QR_CODE_PATH);
+                $qrCodeDirectory = public_path(self::QR_CODE_PATH);
 
                 if (!is_dir($qrCodeDirectory)) {
                     mkdir($qrCodeDirectory, 0755, true);
