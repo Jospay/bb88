@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Models\User;
 use App\Models\DetailUser;
+use App\Models\PercentageType;
+use App\Models\PercentageBreakdowns;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -407,163 +409,142 @@ class RegistrationController extends Controller
      * FIX: Prevents duplicate processing and sends emails to ALL unique recipients (Players and Shirts).
      */
     public function handlePaymentSuccess(Request $request)
-    {
-        $teamId = $request->query('team_id');
-        if (!$teamId) {
-            return redirect('/register')->with('error', 'Payment verification failed: Missing team ID.');
-        }
-
-        // 1. Find the User
-        // Use pessimistic lock to prevent race conditions during status update
-        $user = User::lockForUpdate()->find($teamId);
-
-        if (!$user) {
-            return redirect('/register')->with('error', 'Payment verification failed: Team not found.');
-        }
-
-        // 🛑 FIX: Prevent processing if already marked as paid
-        if ($user->transaction_status === 'paid') {
-             // If already paid, just redirect to the success page without re-sending notifications
-             Log::info("Team ID {$teamId} already paid. Skipping duplicate notification process.");
-             return redirect('/payment/success?id=' . $user->paymongo_checkout_session_id);
-        }
-
-        $sessionId = $user->paymongo_checkout_session_id;
-
-        if (!$sessionId) {
-            Log::error("PayMongo Verification Error: Session ID missing for Team ID {$teamId}.");
-            return redirect('/register')->with('error', 'Payment session not recorded. Please register again.');
-        }
-
-        try {
-            DB::beginTransaction(); // Start transaction for status update
-
-            // 2. Fetch PayMongo Session Status
-            $response = Http::withBasicAuth(env('PAYMONGO_SECRET_KEY'), '')
-                ->get("https://api.paymongo.com/v1/checkout_sessions/{$sessionId}?include=payment_intent");
-
-            if ($response->failed()) {
-                throw new \Exception('Failed to fetch PayMongo session details.');
-            }
-
-            $sessionData = $response->json()['data'];
-            $paymentStatus = $sessionData['attributes']['payment_intent']['attributes']['status'] ?? 'pending';
-
-            // 3. Update User Status Based on Payment Intent Status
-            if ($paymentStatus === 'succeeded' || $paymentStatus === 'paid') {
-                $user->update(['transaction_status' => 'paid']);
-
-                // 📢 Fetch ALL DetailUser records for the team
-                $allDetails = DetailUser::where('user_id', $user->id)->get();
-
-                // Get current date for the email
-                $currentDate = Carbon::now()->format('F d, Y');
-
-                $playerDetails = $allDetails->where('account_type', 'Player');
-                $shirtDetails = $allDetails->where('account_type', 'Shirt');
-
-                // Prepare the designed HTML email content
-                $htmlBody = $this->createConfirmationEmailBody($user->team_name, $currentDate, $playerDetails, $shirtDetails);
-
-                // --- SMS De-duplication and Content Logic ---
-                $sentNumbers = [];
-                $smsCount = 0;
-
-                if ($allDetails->isNotEmpty()) {
-
-                    // Loop through all detail users for SMS
-                    foreach ($allDetails as $detail) {
-                        $rawMobileNumber = $detail->mobile_number;
-                        $accountType = $detail->account_type;
-
-                        // 🚀 NEW FIX: Standardize the mobile number format before checking/sending
-                        $cleanedRecipient = preg_replace('/[^0-9]/', '', $rawMobileNumber);
-
-                        // Use the Movider formatting logic (same as in sendMoviderSms)
-                        if (strlen($cleanedRecipient) == 11 && substr($cleanedRecipient, 0, 1) === '0') {
-                            $formattedMobileNumber = '63' . substr($cleanedRecipient, 1);
-                        } elseif (strlen($cleanedRecipient) == 10 && substr($cleanedRecipient, 0, 1) === '9') {
-                            $formattedMobileNumber = '63' . $cleanedRecipient;
-                        } else {
-                            $formattedMobileNumber = $cleanedRecipient;
-                        }
-
-                        // Check if we already sent a message to this number (Now guaranteed to be clean)
-                        if (in_array($formattedMobileNumber, $sentNumbers)) {
-                            Log::info("Skipping SMS for {$rawMobileNumber}: Already sent a confirmation message (formatted to {$formattedMobileNumber}).");
-                            continue; // Skip to the next number in the loop
-                        }
-
-                        // Determine the tailored message based on account type
-                        $actionText = ($accountType === 'Player')
-                            ? "registered as a Player"
-                            : "registered for an additional Shirt";
-
-                        $smsMessage = "Congrats! Team {$user->team_name} is registered. You are {$actionText}. Claim your shirt at any event redemption center. Use the Cinco app to login and show your QR code for claiming. Thank you!";
-
-                        // 📞 1. Send SMS (The helper function will re-format it, but we pass the clean one)
-                        $this->sendMoviderSms($rawMobileNumber, $smsMessage);
-
-                        // Mark the CLEANED number as sent
-                        $sentNumbers[] = $formattedMobileNumber;
-                        $smsCount++;
-                    }
-
-                    Log::info("Movider SMS sent successfully to {$smsCount} unique members of Team ID {$user->id}.");
-
-
-                    // 📧 2. Send Custom HTML Email to ALL unique emails (Players and Shirts)
-                    $allUniqueEmails = $allDetails->pluck('email')->unique();
-                    $emailCount = 0;
-
-                    foreach ($allUniqueEmails as $recipientEmail) {
-                        try {
-                            Mail::html($htmlBody, function ($mail) use ($recipientEmail, $user) {
-                                $mail->to($recipientEmail)
-                                    ->subject('BB 88 Advertising & Digital Solution Inc. Registration Confirmed: ' . $user->team_name);
-                            });
-                            $emailCount++;
-                        } catch (\Exception $e) {
-                            Log::error("Failed to send custom registration email to {$recipientEmail}: " . $e->getMessage());
-                        }
-                    }
-
-                    if ($emailCount > 0) {
-                        Log::info("Custom HTML registration confirmation email sent to {$emailCount} unique recipients (Players and Shirts).");
-                    } else {
-                        Log::warning("No emails sent: Could not find any unique emails for Team ID {$user->id}.");
-                    }
-
-
-                } else {
-                    Log::error("Notification Skipped: Could not find any DetailUser records for Team ID {$user->id}.");
-                }
-                // --- End of Notification Logic ---
-
-                DB::commit(); // Commit status update
-
-                // KEY CHANGE: Redirect to the final Inertia success page, passing the PayMongo session ID.
-                return redirect('/payment/success?id=' . $sessionId);
-
-            } elseif ($paymentStatus === 'pending') {
-                $user->update(['transaction_status' => 'pending']);
-                DB::commit();
-                $message = 'Payment status is still pending. We will notify you when it is confirmed.';
-                return redirect('/register')->with('status', $message);
-
-            } else {
-                $user->update(['transaction_status' => 'failed']);
-                DB::commit();
-                $message = 'Payment failed or was cancelled. Please try registering again.';
-                return redirect('/register')->with('error', $message);
-            }
-
-        } catch (\Exception $e) {
-            DB::rollback(); // Rollback if any error occurs
-            Log::error("PayMongo Verification Error for Team ID {$teamId}: " . $e->getMessage());
-            return redirect('/register')->with('error', 'An error occurred during payment verification.');
-        }
+{
+    $teamId = $request->query('team_id');
+    if (!$teamId) {
+        return redirect('/register')->with('error', 'Payment verification failed: Missing team ID.');
     }
+
+    // 1. Find the User with pessimistic lock to prevent race conditions
+    $user = User::lockForUpdate()->find($teamId);
+
+    if (!$user) {
+        return redirect('/register')->with('error', 'Payment verification failed: Team not found.');
+    }
+
+    // Prevent processing if already marked as paid
+    if ($user->transaction_status === 'paid') {
+         Log::info("Team ID {$teamId} already paid. Skipping duplicate notification process.");
+         return redirect('/payment/success?id=' . $user->paymongo_checkout_session_id);
+    }
+
+    $sessionId = $user->paymongo_checkout_session_id;
+
+    if (!$sessionId) {
+        Log::error("PayMongo Verification Error: Session ID missing for Team ID {$teamId}.");
+        return redirect('/register')->with('error', 'Payment session not recorded. Please register again.');
+    }
+
+    try {
+        DB::beginTransaction();
+
+        // 2. Fetch PayMongo Session Status
+        $response = Http::withBasicAuth(env('PAYMONGO_SECRET_KEY'), '')
+            ->get("https://api.paymongo.com/v1/checkout_sessions/{$sessionId}?include=payment_intent");
+
+        if ($response->failed()) {
+            throw new \Exception('Failed to fetch PayMongo session details.');
+        }
+
+        $sessionData = $response->json()['data'];
+        $paymentStatus = $sessionData['attributes']['payment_intent']['attributes']['status'] ?? 'pending';
+
+        // 3. Update User Status Based on Payment Intent Status
+        if ($paymentStatus === 'succeeded' || $paymentStatus === 'paid') {
+            $user->update(['transaction_status' => 'paid']);
+
+            // --- 🚀 START: DISTRIBUTION OF BREAKDOWN (Inserted only once paid) ---
+            $percentageTypes = PercentageType::all();
+            $baseAmount = $user->total_payment ?? 0;
+
+            if ($percentageTypes->isNotEmpty() && $baseAmount > 0) {
+                foreach ($percentageTypes as $type) {
+                    // Calculation: total_payment * (percentage_value / 100)
+                    $computedEarning = $baseAmount * ($type->value / 100);
+
+                    PercentageBreakdowns::create([
+                        'user_id'            => $user->id,
+                        'percentage_type_id' => $type->id,
+                        'total_earning'      => $computedEarning,
+                    ]);
+                }
+                Log::info("Earnings breakdown created for Team ID {$user->id}. Total Base: {$baseAmount}");
+            }
+            // --- END: DISTRIBUTION OF BREAKDOWN ---
+
+            // 📢 Fetch ALL DetailUser records for the team
+            $allDetails = DetailUser::where('user_id', $user->id)->get();
+            $currentDate = Carbon::now()->format('F d, Y');
+            $playerDetails = $allDetails->where('account_type', 'Player');
+            $shirtDetails = $allDetails->where('account_type', 'Shirt');
+
+            // Prepare the designed HTML email content
+            $htmlBody = $this->createConfirmationEmailBody($user->team_name, $currentDate, $playerDetails, $shirtDetails);
+
+            // --- SMS De-duplication and Content Logic ---
+            $sentNumbers = [];
+            $smsCount = 0;
+
+            if ($allDetails->isNotEmpty()) {
+                foreach ($allDetails as $detail) {
+                    $rawMobileNumber = $detail->mobile_number;
+                    $accountType = $detail->account_type;
+                    $cleanedRecipient = preg_replace('/[^0-9]/', '', $rawMobileNumber);
+
+                    if (strlen($cleanedRecipient) == 11 && substr($cleanedRecipient, 0, 1) === '0') {
+                        $formattedMobileNumber = '63' . substr($cleanedRecipient, 1);
+                    } elseif (strlen($cleanedRecipient) == 10 && substr($cleanedRecipient, 0, 1) === '9') {
+                        $formattedMobileNumber = '63' . $cleanedRecipient;
+                    } else {
+                        $formattedMobileNumber = $cleanedRecipient;
+                    }
+
+                    if (in_array($formattedMobileNumber, $sentNumbers)) continue;
+
+                    $actionText = ($accountType === 'Player') ? "registered as a Player" : "registered for an additional Shirt";
+                    $smsMessage = "Congrats! Team {$user->team_name} is registered. You are {$actionText}. Claim your shirt at any event redemption center. Use the Cinco app to login and show your QR code for claiming. Thank you!";
+
+                    $this->sendMoviderSms($rawMobileNumber, $smsMessage);
+                    $sentNumbers[] = $formattedMobileNumber;
+                    $smsCount++;
+                }
+
+                // 📧 Send Custom HTML Email to ALL unique emails
+                $allUniqueEmails = $allDetails->pluck('email')->unique();
+                foreach ($allUniqueEmails as $recipientEmail) {
+                    try {
+                        Mail::html($htmlBody, function ($mail) use ($recipientEmail, $user) {
+                            $mail->to($recipientEmail)
+                                ->subject('BB 88 Registration Confirmed: ' . $user->team_name);
+                        });
+                    } catch (\Exception $e) {
+                        Log::error("Failed to send email to {$recipientEmail}: " . $e->getMessage());
+                    }
+                }
+            }
+
+            DB::commit(); // Commit status update and breakdowns
+            return redirect('/payment/success?id=' . $sessionId);
+
+        } elseif ($paymentStatus === 'pending') {
+            $user->update(['transaction_status' => 'pending']);
+            DB::commit();
+            return redirect('/register')->with('status', 'Payment status is still pending.');
+
+        } else {
+            $user->update(['transaction_status' => 'failed']);
+            DB::commit();
+            return redirect('/register')->with('error', 'Payment failed or was cancelled.');
+        }
+
+    } catch (\Exception $e) {
+        DB::rollback(); // Rollback if any error occurs
+        Log::error("PayMongo Verification Error for Team ID {$teamId}: " . $e->getMessage());
+        return redirect('/register')->with('error', 'An error occurred during payment verification.');
+    }
+}
+
+
 
     /**
      * Generates a simple, designed HTML body for the confirmation email.

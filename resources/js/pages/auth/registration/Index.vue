@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
 import { useAddress } from "@/composables/useAddress";
-import PrivacyPolicy from "@/components/privacy-policy/privacy-policy.vue";
+import PrivacyPolicy from "@/components/privacy-policy/Privacy-policy.vue";
 import axios from "axios";
+import { Head } from "@inertiajs/vue3";
+import logoIcon from "@/assets/logo.png";
 
 // --- CONSTANTS ---
 const SHIRT_PRICE = 500;
@@ -282,6 +284,9 @@ function acceptPolicy() {
 </script>
 
 <template>
+    <Head>
+        <link rel="icon" type="image/png" :href="logoIcon" />
+    </Head>
     <div
         class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
     >

@@ -1,4 +1,12 @@
+<script setup>
+import { Head } from "@inertiajs/vue3";
+import logoIcon from "@/assets/logo.png";
+</script>
+
 <template>
+    <Head>
+        <link rel="icon" type="image/png" :href="logoIcon" />
+    </Head>
     <div
         class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
     >

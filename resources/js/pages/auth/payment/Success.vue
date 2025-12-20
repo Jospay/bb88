@@ -1,5 +1,7 @@
 <script setup>
 import { defineProps } from "vue";
+import { Head } from "@inertiajs/vue3";
+import logoIcon from "@/assets/logo.png";
 
 // Define the expected props, including the new 'teamName'
 const props = defineProps({
@@ -16,6 +18,10 @@ const props = defineProps({
 </script>
 
 <template>
+    <Head>
+        <link rel="icon" type="image/png" :href="logoIcon" />
+        <title>BB 88 Advertising & Digital Solution Inc.</title>
+    </Head>
     <div
         class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
     >
