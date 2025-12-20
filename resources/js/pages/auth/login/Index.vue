@@ -1,5 +1,8 @@
 <script setup>
 import { useForm } from "@inertiajs/vue3";
+import { ref } from "vue";
+
+const showPassword = ref(false);
 
 const form = useForm({
     email: "",
@@ -48,12 +51,28 @@ const submit = () => {
                     <label class="block text-sm font-medium text-white mb-1"
                         >Password</label
                     >
-                    <input
-                        v-model="form.password"
-                        type="password"
-                        placeholder="••••••••"
-                        class="w-full rounded-xl border text-white border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-                    />
+                    <div class="relative">
+                        <input
+                            v-model="form.password"
+                            :type="showPassword ? 'text' : 'password'"
+                            placeholder="••••••••"
+                            class="w-full rounded-xl border text-white border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue pr-10"
+                        />
+
+                        <button
+                            @click="showPassword = !showPassword"
+                            type="button"
+                            class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-blue transition-colors"
+                        >
+                            <i
+                                :class="[
+                                    'fas',
+                                    showPassword ? 'fa-eye-slash' : 'fa-eye',
+                                ]"
+                            ></i>
+                        </button>
+                    </div>
+
                     <div
                         v-if="form.errors.password"
                         class="text-red-500 text-xs mt-1"

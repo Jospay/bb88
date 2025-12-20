@@ -32,16 +32,16 @@ const managementLinks = [
     },
 ];
 
-const landingLinks = [
-    { name: "Banner", href: "/admin/banner" },
-    { name: "About Us", href: "/admin/about" },
-    { name: "Services", href: "/admin/services" },
-    { name: "Technology", href: "/admin/technology" },
-    { name: "Events", href: "/admin/events" },
-    { name: "Careers", href: "/admin/careers" },
-    { name: "New & Insights", href: "/admin/insights" },
-    { name: "Contact Us", href: "/admin/contact" },
-];
+// const landingLinks = [
+//     { name: "Banner", href: "/admin/banner" },
+//     { name: "About Us", href: "/admin/about" },
+//     { name: "Services", href: "/admin/services" },
+//     { name: "Technology", href: "/admin/technology" },
+//     { name: "Events", href: "/admin/events" },
+//     { name: "Careers", href: "/admin/careers" },
+//     { name: "New & Insights", href: "/admin/insights" },
+//     { name: "Contact Us", href: "/admin/contact" },
+// ];
 </script>
 
 <template>
@@ -61,7 +61,15 @@ const landingLinks = [
                         alt="Logo"
                     />
                 </div>
-                <div class="text-white text-sm font-medium">Admin</div>
+                <div class="text-white text-sm font-medium">
+                    <a href="profile">
+                        <button
+                            class="bg-brand-blue/20 border border-brand-blue/50 px-4 py-1 rounded-md"
+                        >
+                            Profile
+                        </button>
+                    </a>
+                </div>
             </div>
         </header>
 
@@ -102,7 +110,7 @@ const landingLinks = [
                             </button>
                         </Link>
 
-                        <p
+                        <!-- <p
                             class="text-brand-gray pt-3 font-semibold text-sm uppercase tracking-wider"
                         >
                             Landing Page
@@ -128,7 +136,7 @@ const landingLinks = [
                                     </button>
                                 </Link>
                             </div>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
 
