@@ -21,7 +21,6 @@
             rel="stylesheet"
             href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css"
         />
-        <link rel="shortcut icon" href="{{ Vite::asset('resources/assets/logo.png') }}">
         <title>BB 88 Advertising & Digital Solution Inc.</title>
         @inertiaHead
 
