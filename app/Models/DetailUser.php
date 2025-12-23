@@ -13,6 +13,7 @@ class DetailUser extends Model
     protected $fillable = [
         'user_id',
         'full_name',
+        'username',
         'email',
         'mobile_number',
         'account_type',

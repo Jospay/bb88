@@ -20,6 +20,7 @@ return new class extends Migration
 
             // User Profile Columns
             $table->string('full_name');
+            $table->string('username')->nullable()->unique();
             $table->string('email')->unique();
             $table->string('mobile_number')->nullable()->unique();
             $table->string('password')->nullable();

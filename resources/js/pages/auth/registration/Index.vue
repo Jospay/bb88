@@ -43,6 +43,7 @@ const availShirts = computed(() =>
         if (!availShirtDetails.value[index]) {
             availShirtDetails.value[index] = {
                 fullName: "",
+                username: "", // Added username
                 email: "",
                 mobileNumber: "",
                 accountType: "Shirt",
@@ -69,6 +70,7 @@ const loadFormState = () => {
                 data.players ||
                 Array.from({ length: INITIAL_PLAYER_COUNT }, () => ({
                     fullName: "",
+                    username: "", // Added username
                     email: "",
                     mobileNumber: "",
                     accountType: "Player",
@@ -80,6 +82,7 @@ const loadFormState = () => {
                 { length: INITIAL_PLAYER_COUNT },
                 () => ({
                     fullName: "",
+                    username: "", // Added username
                     email: "",
                     mobileNumber: "",
                     accountType: "Player",
@@ -90,6 +93,7 @@ const loadFormState = () => {
         console.error("Error loading state from localStorage:", e);
         players.value = Array.from({ length: INITIAL_PLAYER_COUNT }, () => ({
             fullName: "",
+            username: "", // Added username
             email: "",
             mobileNumber: "",
             accountType: "Player",
@@ -128,8 +132,8 @@ onMounted(() => {
 watch(
     [teamName, postalCode, players, additionalShirtCount, availShirtDetails],
     () => {
-        saveFormState(); // Save current state to localStorage
-        if (submitError.value) submitError.value = null; // Clear submit error dynamically
+        saveFormState();
+        if (submitError.value) submitError.value = null;
     },
     { deep: true }
 );
@@ -139,18 +143,28 @@ const allUsers = computed(() => [...players.value, ...availShirtDetails.value]);
 
 const duplicateEmails = computed(() => {
     const emails = allUsers.value.map((u) => u.email.trim().toLowerCase());
-    return emails.filter((email, i) => emails.indexOf(email) !== i);
+    return emails.filter((email, i) => email && emails.indexOf(email) !== i);
 });
 
 const duplicateMobiles = computed(() => {
     const mobiles = allUsers.value.map((u) => String(u.mobileNumber).trim());
-    return mobiles.filter((num, i) => mobiles.indexOf(num) !== i);
+    return mobiles.filter((num, i) => num && mobiles.indexOf(num) !== i);
+});
+
+// ADDED: Duplicate check for Username (IGN)
+const duplicateUsernames = computed(() => {
+    const usernames = allUsers.value.map((u) =>
+        u.username?.trim().toLowerCase()
+    );
+    return usernames.filter((name, i) => name && usernames.indexOf(name) !== i);
 });
 
 const isDuplicateEmail = (email) =>
     duplicateEmails.value.includes(email?.trim().toLowerCase());
 const isDuplicateMobile = (num) =>
     duplicateMobiles.value.includes(String(num).trim());
+const isDuplicateUsername = (name) =>
+    duplicateUsernames.value.includes(name?.trim().toLowerCase());
 
 // --- CLEAR SERVER ERROR ON INPUT ---
 const handleInput = (fieldName) => {
@@ -172,6 +186,10 @@ const getError = (fieldName, value = null, type = null) => {
     }
     if (type === "mobile" && value && isDuplicateMobile(value)) {
         return "Duplicate mobile number detected";
+    }
+    // ADDED: Live duplicate detection for username
+    if (type === "username" && value && isDuplicateUsername(value)) {
+        return "Duplicate IGN/Username detected";
     }
 
     return null;
@@ -222,8 +240,6 @@ const registerTeam = async () => {
     try {
         const response = await axios.post("/api/register", payload);
 
-        // REMOVED clearFormState() FROM HERE
-
         const checkoutUrl = response.data.checkout_url;
         if (checkoutUrl) {
             submitMessage.value =
@@ -251,7 +267,7 @@ const registerTeam = async () => {
     }
 };
 
-// for privicy policy
+// for privacy policy
 const showPrivacy = ref(false);
 const canAgree = ref(false);
 const agreeChecked = ref(false);
@@ -272,7 +288,7 @@ function handleScroll() {
     const bottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
 
     if (bottom) {
-        canAgree.value = true; // reveal Agree button
+        canAgree.value = true;
     }
 }
 
@@ -580,7 +596,7 @@ function acceptPolicy() {
                     <div class="grid grid-cols-12 gap-4">
                         <template v-for="(p, index) in players" :key="index">
                             <div
-                                class="md:col-span-4 sm:col-span-6 col-span-12"
+                                class="md:col-span-3 sm:col-span-6 col-span-12"
                             >
                                 <label class="text-white"
                                     >(Player {{ index + 1 }}) Full Name</label
@@ -621,7 +637,51 @@ function acceptPolicy() {
                             </div>
 
                             <div
-                                class="md:col-span-4 sm:col-span-6 col-span-12"
+                                class="md:col-span-3 sm:col-span-6 col-span-12"
+                            >
+                                <label class="text-white"
+                                    >(IGN) In-Game Name</label
+                                >
+                                <input
+                                    type="text"
+                                    v-model="p.username"
+                                    :name="'playerUsername' + index"
+                                    placeholder="In-Game Name"
+                                    required
+                                    @input="
+                                        handleInput(`details.${index}.username`)
+                                    "
+                                    class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
+                                    :class="{
+                                        'ring-red-500': getError(
+                                            `details.${index}.username`,
+                                            p.username,
+                                            'username'
+                                        ),
+                                    }"
+                                />
+                                <p
+                                    v-if="
+                                        getError(
+                                            `details.${index}.username`,
+                                            p.username,
+                                            'username'
+                                        )
+                                    "
+                                    class="text-red-500 text-xs pt-1"
+                                >
+                                    {{
+                                        getError(
+                                            `details.${index}.username`,
+                                            p.username,
+                                            "username"
+                                        )
+                                    }}
+                                </p>
+                            </div>
+
+                            <div
+                                class="md:col-span-3 sm:col-span-6 col-span-12"
                             >
                                 <label class="text-white">E-mail</label>
                                 <input
@@ -663,7 +723,7 @@ function acceptPolicy() {
                             </div>
 
                             <div
-                                class="md:col-span-4 sm:col-span-6 col-span-12"
+                                class="md:col-span-3 sm:col-span-6 col-span-12"
                             >
                                 <label class="text-white">Mobile Number</label>
                                 <input
