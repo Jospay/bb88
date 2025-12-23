@@ -34,8 +34,8 @@ class RegistrationController extends Controller
     // const SUCCESS_URL = 'https://cincodigitalph.com/payment/verify';
     // const FAILURE_URL = 'https://cincodigitalph.com/payment/failure';
 
-    const SUCCESS_URL = 'http://bb88.test/payment/verify';
-    const FAILURE_URL = 'http://bb88.test/payment/failure';
+    const SUCCESS_URL = 'https://mobaebz.bb88advertising.com/payment/verify';
+    const FAILURE_URL = 'https://mobaebz.bb88advertising.com/payment/failure';
 
     protected function sendMoviderSms(string $recipient, string $message): void
     {
