@@ -6,13 +6,11 @@ import axios from "axios";
 import { Head } from "@inertiajs/vue3";
 import logoIcon from "@/assets/logo.png";
 
-// --- CONSTANTS ---
 const SHIRT_PRICE = 500;
 const INITIAL_PLAYER_COUNT = 5;
 const BASE_REGISTRATION_FEE = INITIAL_PLAYER_COUNT * SHIRT_PRICE;
 const LOCAL_STORAGE_KEY = "teamRegistrationDraft";
 
-// --- ADDRESS COMPOSABLE ---
 const {
     regions,
     provinces,
@@ -24,26 +22,33 @@ const {
     selectedBarangay,
 } = useAddress();
 
-// --- FORM STATE VARIABLES ---
 const teamName = ref("");
 const postalCode = ref("");
 const players = ref([]);
+// Added Reserve Player State
+const reservePlayer = ref({
+    fullName: "",
+    username: "",
+    email: "",
+    mobileNumber: "",
+    accountType: "Reserve",
+});
 const additionalShirtCount = ref(0);
 const availShirtDetails = ref([]);
 
-// --- UI & Submission State ---
 const isSubmitting = ref(false);
 const submitMessage = ref("");
 const submitError = ref(null);
 const validationErrors = ref({});
 
-// --- COMPUTED PROPERTIES ---
+const isSuccessfullySubmitted = ref(false);
+
 const availShirts = computed(() =>
     Array.from({ length: additionalShirtCount.value }, (_, index) => {
         if (!availShirtDetails.value[index]) {
             availShirtDetails.value[index] = {
                 fullName: "",
-                username: "", // Added username
+                username: "N/A",
                 email: "",
                 mobileNumber: "",
                 accountType: "Shirt",
@@ -53,153 +58,144 @@ const availShirts = computed(() =>
     })
 );
 
-const totalPayment = computed(() => {
-    const additionalShirtCost = additionalShirtCount.value * SHIRT_PRICE;
-    return BASE_REGISTRATION_FEE + additionalShirtCost;
-});
+const totalPayment = computed(
+    () => BASE_REGISTRATION_FEE + additionalShirtCount.value * SHIRT_PRICE
+);
 
-// --- LOCAL STORAGE FUNCTIONS ---
 const loadFormState = () => {
-    try {
-        const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (storedData) {
-            const data = JSON.parse(storedData);
-            teamName.value = data.teamName || "";
-            postalCode.value = data.postalCode || "";
-            players.value =
-                data.players ||
-                Array.from({ length: INITIAL_PLAYER_COUNT }, () => ({
-                    fullName: "",
-                    username: "", // Added username
-                    email: "",
-                    mobileNumber: "",
-                    accountType: "Player",
-                }));
-            additionalShirtCount.value = data.additionalShirtCount || 0;
-            availShirtDetails.value = data.availShirtDetails || [];
-        } else {
-            players.value = Array.from(
-                { length: INITIAL_PLAYER_COUNT },
-                () => ({
-                    fullName: "",
-                    username: "", // Added username
-                    email: "",
-                    mobileNumber: "",
-                    accountType: "Player",
-                })
-            );
-        }
-    } catch (e) {
-        console.error("Error loading state from localStorage:", e);
-        players.value = Array.from({ length: INITIAL_PLAYER_COUNT }, () => ({
-            fullName: "",
-            username: "", // Added username
-            email: "",
-            mobileNumber: "",
-            accountType: "Player",
-        }));
+    const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (storedData) {
+        const data = JSON.parse(storedData);
+        teamName.value = data.teamName || "";
+        postalCode.value = data.postalCode || "";
+        players.value =
+            data.players ||
+            Array.from({ length: INITIAL_PLAYER_COUNT }, () => ({
+                fullName: "",
+                username: "",
+                email: "",
+                mobileNumber: "",
+                accountType: "Player",
+            }));
+        // Load Reserve Player
+        if (data.reservePlayer) reservePlayer.value = data.reservePlayer;
+
+        additionalShirtCount.value = data.additionalShirtCount || 0;
+        availShirtDetails.value = data.availShirtDetails || [];
+    } else {
+        resetPlayers();
     }
+};
+
+const resetPlayers = () => {
+    players.value = Array.from({ length: INITIAL_PLAYER_COUNT }, () => ({
+        fullName: "",
+        username: "",
+        email: "",
+        mobileNumber: "",
+        accountType: "Player",
+    }));
+    reservePlayer.value = {
+        fullName: "",
+        username: "",
+        email: "",
+        mobileNumber: "",
+        accountType: "Reserve",
+    };
 };
 
 const saveFormState = () => {
-    const dataToSave = {
-        teamName: teamName.value,
-        postalCode: postalCode.value,
-        players: players.value,
-        additionalShirtCount: additionalShirtCount.value,
-        availShirtDetails: availShirtDetails.value,
-    };
-    try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
-    } catch (e) {
-        console.error("Error saving state to localStorage:", e);
-    }
+    if (isSuccessfullySubmitted.value) return;
+
+    localStorage.setItem(
+        LOCAL_STORAGE_KEY,
+        JSON.stringify({
+            teamName: teamName.value,
+            postalCode: postalCode.value,
+            players: players.value,
+            reservePlayer: reservePlayer.value, // Save Reserve
+            additionalShirtCount: additionalShirtCount.value,
+            availShirtDetails: availShirtDetails.value,
+        })
+    );
 };
 
-const clearFormState = () => {
-    try {
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-    } catch (e) {
-        console.error("Error clearing state from localStorage:", e);
-    }
-};
-
-// --- LIFE CYCLE HOOKS ---
-onMounted(() => {
-    loadFormState();
-});
+onMounted(loadFormState);
 
 watch(
-    [teamName, postalCode, players, additionalShirtCount, availShirtDetails],
-    () => {
-        saveFormState();
-        if (submitError.value) submitError.value = null;
-    },
+    [
+        teamName,
+        postalCode,
+        players,
+        reservePlayer,
+        additionalShirtCount,
+        availShirtDetails,
+    ],
+    saveFormState,
     { deep: true }
 );
 
-// --- DUPLICATE CHECK FUNCTIONS ---
-const allUsers = computed(() => [...players.value, ...availShirtDetails.value]);
+// Combined all users including reserve for duplicate checking
+const allUsers = computed(() => {
+    const list = [...players.value];
+    if (reservePlayer.value.fullName || reservePlayer.value.email) {
+        list.push(reservePlayer.value);
+    }
+    return [...list, ...availShirtDetails.value];
+});
 
 const duplicateEmails = computed(() => {
-    const emails = allUsers.value.map((u) => u.email.trim().toLowerCase());
+    const emails = allUsers.value.map((u) => u.email?.trim().toLowerCase());
     return emails.filter((email, i) => email && emails.indexOf(email) !== i);
 });
 
 const duplicateMobiles = computed(() => {
-    const mobiles = allUsers.value.map((u) => String(u.mobileNumber).trim());
+    const mobiles = allUsers.value.map((u) =>
+        String(u.mobileNumber || "").trim()
+    );
     return mobiles.filter((num, i) => num && mobiles.indexOf(num) !== i);
 });
 
-// ADDED: Duplicate check for Username (IGN)
 const duplicateUsernames = computed(() => {
-    const usernames = allUsers.value.map((u) =>
-        u.username?.trim().toLowerCase()
-    );
-    return usernames.filter((name, i) => name && usernames.indexOf(name) !== i);
+    const usernames = allUsers.value
+        .map((u) => u.username?.trim().toLowerCase())
+        .filter((name) => name !== "n/a" && name !== "");
+    return usernames.filter((name, i) => usernames.indexOf(name) !== i);
 });
 
-const isDuplicateEmail = (email) =>
-    duplicateEmails.value.includes(email?.trim().toLowerCase());
-const isDuplicateMobile = (num) =>
-    duplicateMobiles.value.includes(String(num).trim());
-const isDuplicateUsername = (name) =>
-    duplicateUsernames.value.includes(name?.trim().toLowerCase());
-
-// --- CLEAR SERVER ERROR ON INPUT ---
 const handleInput = (fieldName) => {
-    if (validationErrors.value[fieldName]) {
+    if (validationErrors.value && validationErrors.value[fieldName]) {
         delete validationErrors.value[fieldName];
     }
 };
 
-// --- GET ERROR FUNCTION ---
 const getError = (fieldName, value = null, type = null) => {
-    // server validation error
-    if (validationErrors.value[fieldName]) {
+    if (fieldName && validationErrors.value[fieldName]) {
         return validationErrors.value[fieldName][0];
     }
 
-    // live duplicate detection (only if value is not empty)
-    if (type === "email" && value && isDuplicateEmail(value)) {
-        return "Duplicate email detected";
+    if (type === "email" && value) {
+        if (duplicateEmails.value.includes(value.trim().toLowerCase()))
+            return "Duplicate email detected";
     }
-    if (type === "mobile" && value && isDuplicateMobile(value)) {
-        return "Duplicate mobile number detected";
+
+    if (type === "mobile" && value) {
+        const valStr = String(value).trim();
+        if (duplicateMobiles.value.includes(valStr))
+            return "Duplicate mobile number detected";
+        if (valStr.length > 0 && valStr.length !== 10)
+            return "Mobile number must be 10 digits";
     }
-    // ADDED: Live duplicate detection for username
-    if (type === "username" && value && isDuplicateUsername(value)) {
-        return "Duplicate IGN/Username detected";
+
+    if (type === "username" && value && value.toLowerCase() !== "n/a") {
+        if (duplicateUsernames.value.includes(value.trim().toLowerCase()))
+            return "Duplicate IGN/Username detected";
     }
 
     return null;
 };
 
-// --- METHODS ---
-const incrementShirt = () => {
-    additionalShirtCount.value++;
-};
-
+const incrementShirt = () => additionalShirtCount.value++;
 const decrementShirt = () => {
     if (additionalShirtCount.value > 0) {
         additionalShirtCount.value--;
@@ -207,27 +203,59 @@ const decrementShirt = () => {
     }
 };
 
-const isProcessingPayment = ref(false);
-
-// --- FORM SUBMISSION ---
 const registerTeam = async () => {
-    isSubmitting.value = true;
-    submitMessage.value = "";
     submitError.value = null;
-    validationErrors.value = {};
-    isProcessingPayment.value = false;
 
-    const allDetailUsers = allUsers.value.map((u) => ({
-        ...u,
-        mobileNumber: String(u.mobileNumber),
-    }));
+    const hasLocalErrors = allUsers.value.some((u) => {
+        return (
+            getError(null, u.email, "email") ||
+            getError(null, u.mobileNumber, "mobile") ||
+            getError(null, u.username, "username")
+        );
+    });
+
+    if (hasLocalErrors) {
+        submitError.value =
+            "Please fix duplicate or formatting errors before submitting.";
+        return;
+    }
+
+    const captainEmail = players.value[0]?.email;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!captainEmail || !emailRegex.test(captainEmail)) {
+        submitError.value =
+            "The Captain (Player 1) must provide a valid email address for payment.";
+        return;
+    }
+
+    if (Object.keys(validationErrors.value).length > 0) {
+        submitError.value = "Please correct the highlighted errors.";
+        return;
+    }
+
+    isSubmitting.value = true;
+
+    // Prepare details including Reserve if it has data
+    const finalDetails = [...players.value];
+    if (reservePlayer.value.fullName) {
+        finalDetails.push(reservePlayer.value);
+    }
+
+    const allDetailUsers = [...finalDetails, ...availShirtDetails.value].map(
+        (u) => ({
+            fullName: u.fullName,
+            username: u.accountType === "Shirt" ? null : u.username || "",
+            email: u.email,
+            mobileNumber: String(u.mobileNumber),
+            accountType: u.accountType,
+        })
+    );
 
     const payload = {
         team: {
             team_name: teamName.value,
             total_payment: totalPayment.value,
             additional_shirt_count: additionalShirtCount.value,
-            country: "Philippines",
             region: selectedRegion.value,
             province: selectedProvince.value,
             city: selectedCity.value,
@@ -239,66 +267,47 @@ const registerTeam = async () => {
 
     try {
         const response = await axios.post("/api/register", payload);
-
-        const checkoutUrl = response.data.checkout_url;
-        if (checkoutUrl) {
-            submitMessage.value =
-                "Registration successful! Redirecting to PayMongo for payment...";
-            isProcessingPayment.value = true;
-            setTimeout(() => {
-                window.location.href = checkoutUrl;
-            }, 1500);
-        } else {
-            submitMessage.value =
-                "Registration successful, but payment URL was not received.";
+        if (response.data.checkout_url) {
+            window.location.href = response.data.checkout_url;
         }
     } catch (error) {
         if (error.response && error.response.status === 422) {
             validationErrors.value = error.response.data.errors;
-            submitError.value = "Please check the form for highlighted errors.";
-        } else if (error.response && error.response.data.message) {
-            submitError.value = error.response.data.message;
+            submitError.value =
+                "Validation failed. Please check the highlighted fields.";
         } else {
-            submitError.value = `An unknown error occurred: ${error.message}`;
+            submitError.value =
+                error.response?.data?.error ||
+                error.response?.data?.message ||
+                "An error occurred.";
         }
-        console.error("Submission Error:", error);
     } finally {
         isSubmitting.value = false;
     }
 };
 
-// for privacy policy
 const showPrivacy = ref(false);
 const canAgree = ref(false);
 const agreeChecked = ref(false);
-
 const policyBody = ref(null);
 
-// Open modal
 function openModal() {
     showPrivacy.value = true;
     canAgree.value = false;
 }
 
-// When user scrolls the modal body
 function handleScroll() {
     const el = policyBody.value;
     if (!el) return;
-
     const bottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
-
-    if (bottom) {
-        canAgree.value = true;
-    }
+    if (bottom) canAgree.value = true;
 }
 
-// When user clicks Agree
 function acceptPolicy() {
     agreeChecked.value = true;
     showPrivacy.value = false;
 }
 </script>
-
 <template>
     <Head>
         <link rel="icon" type="image/png" :href="logoIcon" />
@@ -391,6 +400,7 @@ function acceptPolicy() {
                             type="text"
                             placeholder="Team Name (must be unique)"
                             v-model="teamName"
+                            @input="handleInput('team.team_name')"
                             required
                             class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 rounded-md outline-none ring-2 ring-brand-blue"
                             :class="{
@@ -768,6 +778,128 @@ function acceptPolicy() {
                         </template>
                     </div>
 
+                    <h1
+                        class="font-gaming text-white sm:text-3xl text-2xl text-center py-5"
+                    >
+                        <i>Reserve Player (Optional)</i>
+                    </h1>
+
+                    <div class="grid grid-cols-12 gap-4">
+                        <div class="md:col-span-3 sm:col-span-6 col-span-12">
+                            <label class="text-white">Full Name</label>
+                            <input
+                                type="text"
+                                v-model="reservePlayer.fullName"
+                                placeholder="Full Name"
+                                @input="handleInput('reserve.fullName')"
+                                class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
+                            />
+                        </div>
+
+                        <div class="md:col-span-3 sm:col-span-6 col-span-12">
+                            <label class="text-white">(IGN) In-Game Name</label>
+                            <input
+                                type="text"
+                                v-model="reservePlayer.username"
+                                :required="!!reservePlayer.fullName"
+                                placeholder="In-Game Name"
+                                @input="handleInput('reserve.username')"
+                                class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
+                                :class="{
+                                    'ring-red-500': getError(
+                                        null,
+                                        reservePlayer.username,
+                                        'username'
+                                    ),
+                                }"
+                            />
+                            <p
+                                v-if="
+                                    getError(
+                                        null,
+                                        reservePlayer.username,
+                                        'username'
+                                    )
+                                "
+                                class="text-red-500 text-xs pt-1"
+                            >
+                                {{
+                                    getError(
+                                        null,
+                                        reservePlayer.username,
+                                        "username"
+                                    )
+                                }}
+                            </p>
+                        </div>
+
+                        <div class="md:col-span-3 sm:col-span-6 col-span-12">
+                            <label class="text-white">E-mail</label>
+                            <input
+                                type="email"
+                                v-model="reservePlayer.email"
+                                :required="!!reservePlayer.fullName"
+                                placeholder="E-mail"
+                                @input="handleInput('reserve.email')"
+                                class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
+                                :class="{
+                                    'ring-red-500': getError(
+                                        null,
+                                        reservePlayer.email,
+                                        'email'
+                                    ),
+                                }"
+                            />
+                            <p
+                                v-if="
+                                    getError(null, reservePlayer.email, 'email')
+                                "
+                                class="text-red-500 text-xs pt-1"
+                            >
+                                {{
+                                    getError(null, reservePlayer.email, "email")
+                                }}
+                            </p>
+                        </div>
+
+                        <div class="md:col-span-3 sm:col-span-6 col-span-12">
+                            <label class="text-white">Mobile Number</label>
+                            <input
+                                type="number"
+                                v-model="reservePlayer.mobileNumber"
+                                :required="!!reservePlayer.fullName"
+                                placeholder="Mobile Number"
+                                @input="handleInput('reserve.mobileNumber')"
+                                class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
+                                :class="{
+                                    'ring-red-500': getError(
+                                        null,
+                                        reservePlayer.mobileNumber,
+                                        'mobile'
+                                    ),
+                                }"
+                            />
+                            <p
+                                v-if="
+                                    getError(
+                                        null,
+                                        reservePlayer.mobileNumber,
+                                        'mobile'
+                                    )
+                                "
+                                class="text-red-500 text-xs pt-1"
+                            >
+                                {{
+                                    getError(
+                                        null,
+                                        reservePlayer.mobileNumber,
+                                        "mobile"
+                                    )
+                                }}
+                            </p>
+                        </div>
+                    </div>
+
                     <template v-if="additionalShirtCount > 0">
                         <h1
                             class="font-gaming text-white sm:text-3xl text-2xl text-center py-5"
@@ -810,6 +942,8 @@ function acceptPolicy() {
                                             ),
                                         }"
                                     />
+                                    <input type="hidden" v-model="s.username" />
+
                                     <p
                                         v-if="
                                             getError(

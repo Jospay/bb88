@@ -107,44 +107,31 @@ class RegistrationController extends Controller
      */
     protected function createPaymongoCheckoutSession(User $user, $amount, $email, $teamName)
     {
-        $sendEmail = false;
-
-        // ... (The rest of this function remains unchanged)
         $formattedAmount = (int)($amount * 100);
-
-        $teamName = $user->team_name;
         $teamId = $user->id;
-
-        $items = [
-            [
-                'name' => 'Team Registration - ' . $teamName,
-                'amount' => $formattedAmount,
-                'currency' => 'PHP',
-                'quantity' => 1,
-            ]
-        ];
 
         $payload = [
             'data' => [
                 'attributes' => [
                     'billing' => [
                         'name' => $teamName,
-                        'email' => $email,
+                        'email' => trim($email),
                     ],
-                    // REDUNDANCY FIX: Set to false so only our custom Laravel email sends.
-                    'send_email_receipt' => $sendEmail,
+                    'send_email_receipt' => false,
                     'show_description' => true,
                     'show_line_items' => true,
                     'cancel_url' => self::FAILURE_URL . '?team_id=' . $teamId,
-                    // Pass the team_id to the new 'verify' route
                     'success_url' => self::SUCCESS_URL . '?team_id=' . $teamId,
-                    'line_items' => $items,
+                    'line_items' => [[
+                        'name' => 'Team Registration - ' . $teamName,
+                        'amount' => $formattedAmount,
+                        'currency' => 'PHP',
+                        'quantity' => 1,
+                    ]],
                     'payment_method_types' => ['card', 'paymaya', 'qrph', 'billease', 'grab_pay', 'dob'],
                     'description' => 'Team Registration Payment for ' . $teamName,
                     'statement_descriptor' => 'BB88REG',
-                    'metadata' => [
-                        'team_id' => $teamId,
-                    ],
+                    'metadata' => ['team_id' => $teamId],
                 ],
             ],
         ];
@@ -153,10 +140,7 @@ class RegistrationController extends Controller
             ->post('https://api.paymongo.com/v1/checkout_sessions', $payload);
 
         if ($response->failed()) {
-            $errorDetails = $response->json();
-            $errorMessage = 'PayMongo API Error: '
-                . ($errorDetails['errors'][0]['detail'] ?? 'Unknown API error occurred.');
-            throw new \Exception($errorMessage);
+            throw new \Exception('PayMongo Error: ' . ($response->json()['errors'][0]['detail'] ?? 'Unknown Error'));
         }
 
         return $response->json()['data'];
@@ -167,50 +151,71 @@ class RegistrationController extends Controller
      * @param array $detailUsers Array of submission details.
      * @return User|null The existing unpaid User model, or null if none found.
      */
+
+
     protected function checkExistingUnpaidTeam(array $detailUsers): ?User
-    {
-        $emails = collect($detailUsers)->pluck('email')->unique()->toArray();
-        $mobileNumbers = collect($detailUsers)->pluck('mobileNumber')->unique()->toArray();
-        $usernames = collect($detailUsers)->pluck('username')->unique()->toArray(); // ADDED
+{
+    // 1. Filter out 'Shirt' types or 'N/A' usernames
+    // Now explicitly allowing 'Reserve' type to be part of the duplicate check logic
+    $validPlayers = collect($detailUsers)->filter(function($player) {
+        return isset($player['username']) &&
+               $player['username'] !== 'N/A' &&
+               $player['username'] !== '' &&
+               in_array($player['accountType'], ['Player', 'Reserve']);
+    });
 
-        // Find DetailUser records that match any email, mobile, or username
-        $detailRecords = DetailUser::whereIn('email', $emails)
-            ->orWhereIn('mobile_number', $mobileNumbers)
-            ->orWhereIn('username', $usernames) // ADDED
-            ->get();
-
-        if ($detailRecords->isEmpty()) {
-            return null;
-        }
-
-        $userIds = $detailRecords->pluck('user_id')->unique()->toArray();
-
-        $existingUnpaidUser = User::whereIn('id', $userIds)
-            ->where('transaction_status', '!=', 'paid')
-            ->first();
-
-        return $existingUnpaidUser;
+    if ($validPlayers->isEmpty()) {
+        return null;
     }
 
+    // 2. Build a query that looks for a specific player matching ALL 3 criteria
+    $detailRecords = DetailUser::where(function($query) use ($validPlayers) {
+        foreach ($validPlayers as $player) {
+            $query->orWhere(function($q) use ($player) {
+                $q->where('email', $player['email'])
+                  ->where('username', $player['username'])
+                  ->where('mobile_number', $player['mobileNumber']);
+            });
+        }
+    })->get();
 
-    public function register(Request $request)
+    if ($detailRecords->isEmpty()) {
+        return null;
+    }
+
+    // 3. Get the team ID and ensure they haven't paid yet
+    $userIds = $detailRecords->pluck('user_id')->unique()->toArray();
+
+    return User::whereIn('id', $userIds)
+        ->where('transaction_status', '!=', 'paid')
+        ->first();
+}
+
+public function register(Request $request)
 {
     $teamData = $request->input('team');
-    $detailUsers = $request->input('details');
+    $detailUsers = $request->input('details', []);
+
+    // --- SANITIZATION: Force null for Shirt usernames, preserve others ---
+    foreach ($detailUsers as $key => $detail) {
+        if (isset($detail['accountType']) && $detail['accountType'] === 'Shirt') {
+            $detailUsers[$key]['username'] = null;
+        }
+    }
+    $request->merge(['details' => $detailUsers]);
+
     $captainEmail = $detailUsers[0]['email'] ?? 'unknown@example.com';
 
     // --- STEP 1: CHECK FOR EXISTING UNPAID TEAM ---
     $existingUser = $this->checkExistingUnpaidTeam($detailUsers);
 
     if ($existingUser) {
-        // Case 1: Team found, but is unpaid (pending/failed). Allow re-payment/re-submission.
-        Log::info("Existing UNPAID team found (ID: {$existingUser->id}). Bypassing validation and initiating re-payment.");
+        Log::info("Existing UNPAID team found (ID: {$existingUser->id}).");
 
-        // We must now validate ONLY the new payment data, since member data already exists.
         $validator = Validator::make($request->all(), [
-            'team.team_name' => 'required|string|max:255', // Simplified check
+            'team.team_name' => 'required|string|max:255|unique:users,team_name,' . $existingUser->id,
             'team.total_payment' => 'required|numeric|min:2500',
-            'team.additional_shirt_count' => 'required|integer|min:0',
+            'details.0.email' => 'required|email',
             'team.region' => 'required|string',
             'team.city' => 'required|string',
         ]);
@@ -219,62 +224,53 @@ class RegistrationController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // If the team name is somehow being changed on re-submission, update it.
-        $existingUser->team_name = $teamData['team_name'];
+        $captainEmail = $request->input('details.0.email');
 
-        // Update the payment fields on the existing user
-        $existingUser->total_payment = $teamData['total_payment'];
-        $existingUser->additional_shirt_count = $teamData['additional_shirt_count'];
-        $existingUser->region = $teamData['region'];
-        $existingUser->province = $teamData['province'] ?? null;
-        $existingUser->city = $teamData['city'];
-        $existingUser->barangay = $teamData['barangay'] ?? null;
-        $existingUser->postal_code = $teamData['postal_code'] ?? null;
+        $existingUser->fill([
+            'team_name' => $teamData['team_name'],
+            'total_payment' => $teamData['total_payment'],
+            'additional_shirt_count' => $teamData['additional_shirt_count'],
+            'region' => $teamData['region'],
+            'province' => $teamData['province'] ?? null,
+            'city' => $teamData['city'],
+            'barangay' => $teamData['barangay'] ?? null,
+            'postal_code' => $teamData['postal_code'] ?? null,
+        ]);
 
         DB::beginTransaction();
         try {
-            // Save the updated team data
             $existingUser->save();
 
-            // RE-CREATE PAYMONGO CHECKOUT SESSION
             $sessionData = $this->createPaymongoCheckoutSession(
-                $existingUser, // Use the existing user model
+                $existingUser,
                 $teamData['total_payment'],
                 $captainEmail,
                 $teamData['team_name']
             );
 
-            $checkoutUrl = $sessionData['attributes']['checkout_url'];
-            $sessionId = $sessionData['id'];
-
-            // Update existing USER with NEW session ID and status
             $existingUser->update([
-                'paymongo_checkout_session_id' => $sessionId,
+                'paymongo_checkout_session_id' => $sessionData['id'],
                 'transaction_status' => 'pending_payment',
             ]);
 
             DB::commit();
-
             return response()->json([
-                'message' => 'Existing team found. Redirecting to payment with new session.',
+                'message' => 'Existing team found. Redirecting to payment.',
                 'user_id' => $existingUser->id,
-                'checkout_url' => $checkoutUrl
+                'checkout_url' => $sessionData['attributes']['checkout_url']
             ], 202);
 
         } catch (\Exception $e) {
             DB::rollback();
-            Log::error("Re-Registration Failed for Team ID {$existingUser->id}: " . $e->getMessage());
-
+            Log::error("PayMongo Session Error (Existing Team): " . $e->getMessage());
             return response()->json([
-                'message' => 'Team re-registration failed. The transaction was rolled back.',
-                'error' => $e->getMessage(),
+                'message' => 'Team re-registration failed.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    // --- STEP 2: TEAM NOT FOUND OR ALREADY PAID. PROCEED WITH NORMAL CREATION/VALIDATION ---
-
-    // VALIDATION FOR NEW REGISTRATION
+    // --- STEP 2: NORMAL CREATION ---
     $validator = Validator::make($request->all(), [
         'team.team_name' => 'required|string|max:255|unique:users,team_name',
         'team.total_payment' => 'required|numeric|min:2500',
@@ -282,24 +278,21 @@ class RegistrationController extends Controller
         'team.region' => 'required|string',
         'team.city' => 'required|string',
         'details' => 'required|array|min:5',
-
-        // These details MUST be unique because we already established they don't belong to an unpaid team.
         'details.*.fullName' => 'required|string|max:255',
-        'details.*.username' => 'required|string|max:255|unique:detail_user,username', // ADDED: Unique check for username
+        'details.*.username' => 'nullable|string|max:255|unique:detail_user,username',
         'details.*.email' => 'required|email|unique:detail_user,email',
-        'details.*.mobileNumber' => 'required|string|max:20|unique:detail_user,mobile_number',
-        'details.*.accountType' => 'required|in:Player,Shirt',
+        'details.*.mobileNumber' => 'required|string|digits:10|unique:detail_user,mobile_number',
+        'details.*.accountType' => 'required|in:Player,Shirt,Reserve', // Added Reserve here
     ]);
-
 
     if ($validator->fails()) {
         return response()->json(['errors' => $validator->errors()], 422);
     }
 
-    DB::beginTransaction();
+    $captainEmail = $request->input('details.0.email');
 
+    DB::beginTransaction();
     try {
-        // 1. CREATE NEW TEAM USER
         $user = User::create([
             'team_name' => $teamData['team_name'],
             'total_payment' => $teamData['total_payment'],
@@ -310,55 +303,38 @@ class RegistrationController extends Controller
             'city' => $teamData['city'],
             'barangay' => $teamData['barangay'] ?? null,
             'postal_code' => $teamData['postal_code'] ?? null,
-            'paymongo_checkout_session_id' => null,
             'transaction_status' => 'pending_registration',
         ]);
 
-        // 2. PAYMONGO CHECKOUT SESSION CREATION
-        $sessionData = $this->createPaymongoCheckoutSession(
-            $user,
-            $teamData['total_payment'],
-            $captainEmail,
-            $teamData['team_name']
-        );
+        $sessionData = $this->createPaymongoCheckoutSession($user, $teamData['total_payment'], $captainEmail, $teamData['team_name']);
 
-        $checkoutUrl = $sessionData['attributes']['checkout_url'];
-        $sessionId = $sessionData['id'];
-
-        // 3. UPDATE USER with session ID and status
         $user->update([
-            'paymongo_checkout_session_id' => $sessionId,
+            'paymongo_checkout_session_id' => $sessionData['id'],
             'transaction_status' => 'pending_payment',
         ]);
 
-        // 4. QR CODE GENERATION AND DETAILS INSERTION (Transaction-safe)
+        // --- QR CODE LOGIC ---
         if (class_exists('QRcode')) {
             $lastDetail = DetailUser::orderBy('id', 'desc')->lockForUpdate()->first();
             $lastNumber = 0;
-
             if ($lastDetail && preg_match('/BB88(\d+)/', $lastDetail->qrcode_img, $matches)) {
                 $lastNumber = (int)$matches[1];
             }
 
             $qrCodeDirectory = public_path(self::QR_CODE_PATH);
-
-            if (!is_dir($qrCodeDirectory)) {
-                mkdir($qrCodeDirectory, 0755, true);
-            }
+            if (!is_dir($qrCodeDirectory)) mkdir($qrCodeDirectory, 0755, true);
 
             foreach ($detailUsers as $detail) {
                 $lastNumber++;
                 $sequential = str_pad($lastNumber, 6, '0', STR_PAD_LEFT);
-
                 $qrPlain = 'BB88' . $sequential;
                 $qrImg = $qrPlain . '.png';
                 $qrHashed = Hash::make($qrPlain);
 
-                // Insert first, then generate QR code
                 $insertedDetail = DetailUser::create([
                     'user_id' => $user->id,
                     'full_name' => $detail['fullName'],
-                    'username' => $detail['username'], // ADDED: Username insertion
+                    'username' => $detail['username'],
                     'email' => $detail['email'],
                     'mobile_number' => $detail['mobileNumber'],
                     'account_type' => $detail['accountType'],
@@ -367,35 +343,24 @@ class RegistrationController extends Controller
                 ]);
 
                 if ($insertedDetail) {
-                    // Generate QR code only after successful DB insertion
                     \QRcode::png($qrHashed, $qrCodeDirectory . $qrImg, QR_ECLEVEL_L, 10, 2);
                 } else {
-                    // If insert fails, throw exception to rollback transaction
-                    throw new \Exception("Failed to insert DetailUser record for {$detail['fullName']}");
+                    throw new \Exception("Failed to insert DetailUser record.");
                 }
             }
         }
 
-
-        // 5. COMMIT TRANSACTION
         DB::commit();
-
-        // 6. RETURN REDIRECT URL
         return response()->json([
             'message' => 'Team registered. Redirecting to payment.',
             'user_id' => $user->id,
-            'checkout_url' => $checkoutUrl
+            'checkout_url' => $sessionData['attributes']['checkout_url']
         ], 202);
 
     } catch (\Exception $e) {
         DB::rollback();
-
-        Log::error("Registration Failed: " . $e->getMessage() . " on line " . $e->getLine());
-
-        return response()->json([
-            'message' => 'Team registration failed. The transaction was rolled back.',
-            'error' => $e->getMessage(),
-        ], 500);
+        Log::error("Registration Failed: " . $e->getMessage());
+        return response()->json(['message' => 'Registration failed.', 'error' => $e->getMessage()], 500);
     }
 }
 

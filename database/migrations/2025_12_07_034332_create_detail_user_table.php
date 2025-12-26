@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('mobile_number')->nullable()->unique();
             $table->string('password')->nullable();
-            $table->enum('account_type', ['Player', 'Shirt'])->nullable();
+            $table->enum('account_type', ['Player', 'Shirt', 'Reserve'])->nullable();
             $table->string('qrcode_name')->nullable();
             $table->string('qrcode_img')->nullable();
             $table->integer('verification_account')->default(0);
