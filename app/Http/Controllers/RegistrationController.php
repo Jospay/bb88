@@ -31,11 +31,11 @@ class RegistrationController extends Controller
     const QR_CODE_PATH = 'qr_image/';
 
     // UPDATED: SUCCESS_URL now points to our new dedicated verification route
-    const SUCCESS_URL = 'https://bb88.test/payment/verify';
-    const FAILURE_URL = 'https://bb88.test/payment/failure';
+    // const SUCCESS_URL = 'https://bb88.test/payment/verify';
+    // const FAILURE_URL = 'https://bb88.test/payment/failure';
 
-    // const SUCCESS_URL = 'https://mobaebz.bb88advertising.com/payment/verify';
-    // const FAILURE_URL = 'https://mobaebz.bb88advertising.com/payment/failure';
+    const SUCCESS_URL = 'https://mobaebz.bb88advertising.com/payment/verify';
+    const FAILURE_URL = 'https://mobaebz.bb88advertising.com/payment/failure';
 
     protected function sendMoviderSms(string $recipient, string $message): void
     {
