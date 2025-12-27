@@ -11,9 +11,9 @@ import logoIcon from "@/assets/logo.png";
         class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
     >
         <div class="mx-auto w-full max-w-[1320px] px-4">
-            <div class="text-[#DCDBE0] flex gap-5 text-lg">
+            <!-- <div class="text-[#DCDBE0] flex gap-5 text-lg">
                 <a href="">MORE INFO</a>
-            </div>
+            </div> -->
             <!-- <img
                 src="@/assets/landing-cinco-logo.png"
                 class="mx-auto sm:w-[400px] w-full pt-8 pb-5"
@@ -38,7 +38,7 @@ import logoIcon from "@/assets/logo.png";
             </h1>
 
             <img
-                src="@/assets/moba.jpg"
+                src="@/assets/moba2.jpg"
                 class="md:rounded-2xl rounded-xl mt-7"
                 alt=""
             />

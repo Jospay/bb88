@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, nextTick } from "vue";
 import { useAddress } from "@/composables/useAddress";
 import PrivacyPolicy from "@/components/privacy-policy/Privacy-policy.vue";
 import axios from "axios";
@@ -37,6 +37,7 @@ const additionalShirtCount = ref(0);
 const availShirtDetails = ref([]);
 
 const isSubmitting = ref(false);
+const isProcessingPayment = ref(false); // NEW: Added this state for the button
 const submitMessage = ref("");
 const submitError = ref(null);
 const validationErrors = ref({});
@@ -164,8 +165,14 @@ const duplicateUsernames = computed(() => {
 });
 
 const handleInput = (fieldName) => {
+    // 1. Remove the red line/specific error message
     if (validationErrors.value && validationErrors.value[fieldName]) {
         delete validationErrors.value[fieldName];
+    }
+
+    // 2. Clear the bottom "Validation failed" message if no more backend errors exist
+    if (Object.keys(validationErrors.value).length === 0) {
+        submitError.value = null;
     }
 };
 
@@ -204,8 +211,11 @@ const decrementShirt = () => {
 };
 
 const registerTeam = async () => {
+    // 1. Reset everything before starting
     submitError.value = null;
+    validationErrors.value = {};
 
+    // 2. Check Local Validation (Duplicates)
     const hasLocalErrors = allUsers.value.some((u) => {
         return (
             getError(null, u.email, "email") ||
@@ -217,9 +227,18 @@ const registerTeam = async () => {
     if (hasLocalErrors) {
         submitError.value =
             "Please fix duplicate or formatting errors before submitting.";
+
+        await nextTick();
+        const firstError = document.querySelector(
+            ".ring-red-500, .text-red-500"
+        );
+        if (firstError) {
+            firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
         return;
     }
 
+    // 3. Check Captain Email
     const captainEmail = players.value[0]?.email;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!captainEmail || !emailRegex.test(captainEmail)) {
@@ -228,14 +247,9 @@ const registerTeam = async () => {
         return;
     }
 
-    if (Object.keys(validationErrors.value).length > 0) {
-        submitError.value = "Please correct the highlighted errors.";
-        return;
-    }
-
     isSubmitting.value = true;
 
-    // Prepare details including Reserve if it has data
+    // 4. Prepare Payload
     const finalDetails = [...players.value];
     if (reservePlayer.value.fullName) {
         finalDetails.push(reservePlayer.value);
@@ -261,28 +275,50 @@ const registerTeam = async () => {
             city: selectedCity.value,
             barangay: selectedBarangay.value,
             postal_code: postalCode.value,
+            agree: agreeChecked.value,
         },
         details: allDetailUsers,
     };
 
     try {
         const response = await axios.post("/api/register", payload);
+
         if (response.data.checkout_url) {
-            window.location.href = response.data.checkout_url;
+            // Change status to "Processing..." right before redirect
+            isSubmitting.value = false;
+            isProcessingPayment.value = true;
+
+            // Short delay to ensure the user sees the "Processing" state before the page leaves
+            setTimeout(() => {
+                window.location.href = response.data.checkout_url;
+            }, 500);
         }
     } catch (error) {
+        isProcessingPayment.value = false; // Reset if there's an error
         if (error.response && error.response.status === 422) {
             validationErrors.value = error.response.data.errors;
             submitError.value =
                 "Validation failed. Please check the highlighted fields.";
+
+            await nextTick();
+            const firstError = document.querySelector(
+                ".ring-red-500, .text-red-500"
+            );
+            if (firstError) {
+                firstError.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+            }
         } else {
             submitError.value =
-                error.response?.data?.error ||
-                error.response?.data?.message ||
-                "An error occurred.";
+                error.response?.data?.message || "An error occurred.";
         }
     } finally {
-        isSubmitting.value = false;
+        // Only stop submitting if we aren't about to redirect
+        if (!isProcessingPayment.value) {
+            isSubmitting.value = false;
+        }
     }
 };
 
@@ -308,6 +344,7 @@ function acceptPolicy() {
     showPrivacy.value = false;
 }
 </script>
+
 <template>
     <Head>
         <link rel="icon" type="image/png" :href="logoIcon" />
@@ -339,8 +376,8 @@ function acceptPolicy() {
 
             <div class="text-[#DCDBE0] flex gap-5 mt-7 text-lg">
                 <a href="/">BACK</a>
-                <div>|</div>
-                <a href="">MORE INFO</a>
+                <!-- <div>|</div>
+                <a href="">MORE INFO</a> -->
             </div>
         </div>
 
@@ -449,9 +486,9 @@ function acceptPolicy() {
                             <label class="text-white">Region</label>
                             <select
                                 v-model="selectedRegion"
+                                @change="handleInput('team.region')"
                                 required
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
-                                name="region"
                                 :class="{
                                     'ring-red-500': getError('team.region'),
                                 }"
@@ -479,10 +516,9 @@ function acceptPolicy() {
                             <label class="text-white">Province</label>
                             <select
                                 v-model="selectedProvince"
+                                @change="handleInput('team.province')"
                                 :disabled="isNcr || !selectedRegion"
-                                :required="!isNcr"
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2 ring-[#bf38a6] disabled:opacity-40"
-                                name="province"
                                 :class="{
                                     'ring-red-500': getError('team.province'),
                                 }"
@@ -512,13 +548,12 @@ function acceptPolicy() {
                             <label class="text-white">City</label>
                             <select
                                 v-model="selectedCity"
+                                @change="handleInput('team.city')"
                                 :disabled="
                                     (!isNcr && !selectedProvince) ||
                                     cities.length === 0
                                 "
-                                required
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2 ring-[#bf38a6] disabled:opacity-40"
-                                name="city"
                                 :class="{
                                     'ring-red-500': getError('team.city'),
                                 }"
@@ -546,10 +581,9 @@ function acceptPolicy() {
                             <label class="text-white">Barangay</label>
                             <select
                                 v-model="selectedBarangay"
+                                @change="handleInput('team.barangay')"
                                 :disabled="!selectedCity"
-                                required
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2 ring-[#bf38a6] disabled:opacity-40"
-                                name="barangay"
                                 :class="{
                                     'ring-red-500': getError('team.barangay'),
                                 }"
@@ -579,10 +613,10 @@ function acceptPolicy() {
                             <label class="text-white">Postal Code</label>
                             <input
                                 type="text"
-                                placeholder="Postal Code"
                                 v-model="postalCode"
+                                @input="handleInput('team.postal_code')"
+                                placeholder="Postal Code"
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
-                                name="postal"
                                 :class="{
                                     'ring-red-500':
                                         getError('team.postal_code'),
@@ -791,9 +825,19 @@ function acceptPolicy() {
                                 type="text"
                                 v-model="reservePlayer.fullName"
                                 placeholder="Full Name"
-                                @input="handleInput('reserve.fullName')"
+                                @input="handleInput('details.5.fullName')"
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
+                                :class="{
+                                    'ring-red-500':
+                                        getError('details.5.fullName'),
+                                }"
                             />
+                            <p
+                                v-if="getError('details.5.fullName')"
+                                class="text-red-500 text-xs pt-1"
+                            >
+                                {{ getError("details.5.fullName") }}
+                            </p>
                         </div>
 
                         <div class="md:col-span-3 sm:col-span-6 col-span-12">
@@ -803,18 +847,21 @@ function acceptPolicy() {
                                 v-model="reservePlayer.username"
                                 :required="!!reservePlayer.fullName"
                                 placeholder="In-Game Name"
-                                @input="handleInput('reserve.username')"
+                                @input="handleInput('details.5.username')"
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
                                 :class="{
-                                    'ring-red-500': getError(
-                                        null,
-                                        reservePlayer.username,
-                                        'username'
-                                    ),
+                                    'ring-red-500':
+                                        getError('details.5.username') ||
+                                        getError(
+                                            null,
+                                            reservePlayer.username,
+                                            'username'
+                                        ),
                                 }"
                             />
                             <p
                                 v-if="
+                                    getError('details.5.username') ||
                                     getError(
                                         null,
                                         reservePlayer.username,
@@ -824,6 +871,7 @@ function acceptPolicy() {
                                 class="text-red-500 text-xs pt-1"
                             >
                                 {{
+                                    getError("details.5.username") ||
                                     getError(
                                         null,
                                         reservePlayer.username,
@@ -840,23 +888,27 @@ function acceptPolicy() {
                                 v-model="reservePlayer.email"
                                 :required="!!reservePlayer.fullName"
                                 placeholder="E-mail"
-                                @input="handleInput('reserve.email')"
+                                @input="handleInput('details.5.email')"
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
                                 :class="{
-                                    'ring-red-500': getError(
-                                        null,
-                                        reservePlayer.email,
-                                        'email'
-                                    ),
+                                    'ring-red-500':
+                                        getError('details.5.email') ||
+                                        getError(
+                                            null,
+                                            reservePlayer.email,
+                                            'email'
+                                        ),
                                 }"
                             />
                             <p
                                 v-if="
+                                    getError('details.5.email') ||
                                     getError(null, reservePlayer.email, 'email')
                                 "
                                 class="text-red-500 text-xs pt-1"
                             >
                                 {{
+                                    getError("details.5.email") ||
                                     getError(null, reservePlayer.email, "email")
                                 }}
                             </p>
@@ -869,18 +921,21 @@ function acceptPolicy() {
                                 v-model="reservePlayer.mobileNumber"
                                 :required="!!reservePlayer.fullName"
                                 placeholder="Mobile Number"
-                                @input="handleInput('reserve.mobileNumber')"
+                                @input="handleInput('details.5.mobileNumber')"
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
                                 :class="{
-                                    'ring-red-500': getError(
-                                        null,
-                                        reservePlayer.mobileNumber,
-                                        'mobile'
-                                    ),
+                                    'ring-red-500':
+                                        getError('details.5.mobileNumber') ||
+                                        getError(
+                                            null,
+                                            reservePlayer.mobileNumber,
+                                            'mobile'
+                                        ),
                                 }"
                             />
                             <p
                                 v-if="
+                                    getError('details.5.mobileNumber') ||
                                     getError(
                                         null,
                                         reservePlayer.mobileNumber,
@@ -890,6 +945,7 @@ function acceptPolicy() {
                                 class="text-red-500 text-xs pt-1"
                             >
                                 {{
+                                    getError("details.5.mobileNumber") ||
                                     getError(
                                         null,
                                         reservePlayer.mobileNumber,
@@ -943,7 +999,6 @@ function acceptPolicy() {
                                         }"
                                     />
                                     <input type="hidden" v-model="s.username" />
-
                                     <p
                                         v-if="
                                             getError(
@@ -1076,25 +1131,38 @@ function acceptPolicy() {
                     </template>
 
                     <!-- =============== PRIVACY CHECKBOX =============== -->
-                    <div class="flex items-center gap-3 pt-5">
-                        <input
-                            id="agree"
-                            type="checkbox"
-                            v-model="agreeChecked"
-                            class="mt-1 h-4 w-4 text-brand focus:ring-brand border-gray-300 rounded"
-                            required
-                        />
+                    <div class="flex flex-col pt-5">
+                        <div class="flex items-center gap-3">
+                            <input
+                                id="agree"
+                                type="checkbox"
+                                v-model="agreeChecked"
+                                @change="handleInput('team.agree')"
+                                class="mt-1 h-4 w-4 text-brand focus:ring-brand border-gray-300 rounded"
+                                :class="{
+                                    'ring-2 ring-red-500':
+                                        getError('team.agree'),
+                                }"
+                            />
 
-                        <label for="agree" class="text-sm text-white">
-                            I agree to the
-                            <a
-                                href="#"
-                                class="text-brand-green font-bold hover:underline"
-                                @click.prevent="openModal"
-                            >
-                                Privacy Policy
-                            </a>
-                        </label>
+                            <label for="agree" class="text-sm text-white">
+                                I agree to the
+                                <a
+                                    href="#"
+                                    class="text-brand-green font-bold hover:underline"
+                                    @click.prevent="openModal"
+                                >
+                                    Privacy Policy
+                                </a>
+                            </label>
+                        </div>
+
+                        <p
+                            v-if="getError('team.agree')"
+                            class="text-red-500 text-xs mt-1"
+                        >
+                            {{ getError("team.agree") }}
+                        </p>
                     </div>
 
                     <!-- =============== PRIVACY POLICY MODAL =============== -->
@@ -1136,7 +1204,7 @@ function acceptPolicy() {
                     </div>
 
                     <div
-                        class="xl:flex grid xl:justify-between justify-center items-center mt-4"
+                        class="xl:flex grid xl:justify-between justify-center mt-4"
                     >
                         <div>
                             <h1
@@ -1205,6 +1273,7 @@ function acceptPolicy() {
                                 <div class="sm:col-span-2 col-span-6">
                                     <button
                                         type="submit"
+                                        @click.prevent="registerTeam"
                                         :disabled="
                                             isSubmitting || isProcessingPayment
                                         "
@@ -1247,11 +1316,14 @@ function acceptPolicy() {
                                 {{
                                     BASE_REGISTRATION_FEE.toLocaleString(
                                         "en-PH",
-                                        {
-                                            minimumFractionDigits: 2,
-                                        }
+                                        { minimumFractionDigits: 2 }
                                     )
                                 }})
+                                <span class="block mt-1 italic text-[#f3f3f3]">
+                                    * Reserve players do not have a shirt
+                                    included, they will only receive one and be
+                                    eligible to play if a main player backs out.
+                                </span>
                             </p>
                         </div>
                     </div>
