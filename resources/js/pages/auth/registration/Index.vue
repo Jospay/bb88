@@ -369,7 +369,12 @@ function acceptPolicy() {
             <div class="text-[#DCDBE0] flex gap-5 mt-7 text-lg">
                 <a href="/">BACK</a>
                 <div>|</div>
-                <a href="register/how">HOW TO REGISTER?</a>
+                <div>
+                    REGISTRATION STEP-BY-STEP
+                    <a href="register/how" class="underline text-brand-blue"
+                        >GUIDE HERE</a
+                    >
+                </div>
             </div>
         </div>
 

@@ -84,9 +84,9 @@ const registerTeam = () => {
             ></div>
             <div class="mx-auto w-full max-w-[1320px]">
                 <h1
-                    class="font-gaming text-center md:pt-0 pt-2 text-white lg:text-7xl md:text-5xl text-3xl relative z-10"
+                    class="font-gaming text-center md:pt-0 pt-2 text-white md:text-5xl text-3xl relative z-10"
                 >
-                    <i>HOW TO REGISTER?</i>
+                    <i>REGISTRATION STEP-BY-STEP GUIDE</i>
                 </h1>
             </div>
         </div>
@@ -230,8 +230,8 @@ const registerTeam = () => {
                             Enter details for each player: Full Name, IGN (ML
                             username), Email, and Mobile Number. Choose a shirt
                             size (L, XL, or XXL). Note: Each player must have a
-                            unique email and mobile number; duplicates are not
-                            allowed.
+                            unique in-game name, email and mobile number;
+                            duplicates are not allowed.
                         </p>
 
                         <h1
@@ -314,8 +314,8 @@ const registerTeam = () => {
                         <p class="text-center text-sm py-2 text-white">
                             Fill out the information for your reserve player.
                             They will only play if a main team member is injured
-                            or unavailable. A unique email and contact number
-                            are also required.
+                            or unavailable. A unique in-game name, email and
+                            contact number are also required.
                         </p>
                         <h1
                             class="font-gaming text-white sm:text-3xl text-2xl text-center py-5"
