@@ -12,6 +12,10 @@ Route::get('/register', function () {
     ]);
 });
 
+Route::get('/register/how', function () {
+    return Inertia::render('auth/registration/How');
+});
+
 // --- API Endpoint for Registration ---
 Route::post('/api/register', [RegistrationController::class, 'register']);
 
