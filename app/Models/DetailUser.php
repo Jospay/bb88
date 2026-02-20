@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,7 @@ class DetailUser extends Model
         'qrcode_name',
         'qrcode_img',
         'verification_account',
+        'size_shirt',
         'status',
     ];
 

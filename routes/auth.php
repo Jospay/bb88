@@ -1,4 +1,5 @@
 <?php
+
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
@@ -11,10 +12,6 @@ Route::get('/register', function () {
     ]);
 });
 
-// Route::get('/admin/login', function () {
-//     return Inertia::render('auth/login/Index');
-// });
-
 // --- API Endpoint for Registration ---
 Route::post('/api/register', [RegistrationController::class, 'register']);
 
@@ -23,3 +20,10 @@ Route::get('/payment/verify', [RegistrationController::class, 'handlePaymentSucc
 
 // 2. Final Success Page (Inertia Renderer)
 Route::get('/payment/success', [PaymentController::class, 'success']);
+
+// 3. PayMongo Webhook (Server-to-Server)
+Route::post('/api/paymongo/webhook', [RegistrationController::class, 'handlePaymongoWebhook']);
+
+// Route::get('/admin/login', function () {
+//     return Inertia::render('auth/login/Index');
+// });

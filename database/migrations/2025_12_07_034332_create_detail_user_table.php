@@ -14,9 +14,9 @@ return new class extends Migration
 
             // Foreign Key linking to the 'users' table
             $table->foreignId('user_id')
-                  ->constrained('users')
-                  ->onUpdate('cascade')
-                  ->onDelete('cascade');
+                ->constrained('users')
+                ->onUpdate('cascade')
+                ->onDelete('cascade');
 
             // User Profile Columns
             $table->string('full_name');
@@ -28,6 +28,7 @@ return new class extends Migration
             $table->string('qrcode_name')->nullable();
             $table->string('qrcode_img')->nullable();
             $table->integer('verification_account')->default(0);
+            $table->enum('size_shirt', ['L', 'XL', 'XXL']);
             $table->enum('status', ['pending', 'claimed'])->default('pending');
             $table->timestamps();
         });

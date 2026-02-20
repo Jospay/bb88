@@ -5,16 +5,11 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EarningController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\UsersController;
-use App\Http\Controllers\Admin\LoginController; // You will create this
+use App\Http\Controllers\Admin\LoginController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-// Public login routes
-// 1. Show the Page
 Route::get('/admin/login', [LoginController::class, 'showLoginForm'])->name('login');
-// 2. Handle the Form Submission
 Route::post('/admin/login', [LoginController::class, 'login']);
-// 3. Handle Logout
 Route::post('/admin/logout', [LoginController::class, 'logout'])->name('admin.logout');
 
 // Protected Admin Dashboard Routes
