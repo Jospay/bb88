@@ -56,10 +56,8 @@ class RegistrationController extends Controller
             $campaignDate = $now->format('d M Y');
             $campaignTime = $now->format('H:i:s');
 
-            // Generate a unique campaign name for logging/tracking purposes
-            $uniqueCampaignName = "{$campaignDate} | {$campaignTime} | BB88Reg"; // NEW FORMAT HERE
+            $uniqueCampaignName = "{$campaignDate} | {$campaignTime} | BB88Reg";
 
-            // CAMPAIGN API PAYLOAD STRUCTURE
             $payload = [
                 'phoneNumbers' => ['phone' => [$formattedRecipient]],
                 'campaignName' => $uniqueCampaignName,
@@ -67,7 +65,6 @@ class RegistrationController extends Controller
                 'message' => $message,
             ];
 
-            // Use Basic Auth for Movider Campaign API
             $response = Http::withBasicAuth($apiKey, $apiSecret)
                 ->post($apiUrl, $payload);
 
@@ -103,6 +100,7 @@ class RegistrationController extends Controller
             'team.postal_code' => 'required|string',
             'details' => 'required|array|min:1',
             'details.*.fullName' => 'required|string|max:255',
+            'details.*.username' => 'required|string|max:255',
             'details.*.email' => 'required|email|unique:detail_user,email',
             'details.*.mobileNumber' => 'required|string|digits:10|unique:detail_user,mobile_number',
             'details.*.size_shirt' => 'required|string',
@@ -183,7 +181,7 @@ class RegistrationController extends Controller
 
         return response()->json([
             'message' => 'Registration successful.',
-            'token' => $uniqueToken // This is what the Vue frontend needs
+            'token' => $uniqueToken
         ], 200);
     }
 
@@ -191,13 +189,14 @@ class RegistrationController extends Controller
     {
         $allDetails = DetailUser::where('user_id', $user->id)->get();
         $currentDate = Carbon::now()->format('F d, Y');
+        $formattedAmount = number_format($user->total_payment, 2);
 
         $sentNumbers = [];
         foreach ($allDetails as $detail) {
             if (in_array($detail->mobile_number, $sentNumbers)) continue;
 
-            // Updated label to reflect the new flow
-            $label = 'No payment is required right now. Once the team qualifies, you will receive an email for the payment instructions.';
+            // Updated label to include the specific amount and "full team payment" phrasing
+            $label = "total payment to be paid after the team qualifies ₱{$formattedAmount}, a separate email will be sent with instructions for the full team payment.";
 
             $actionText = match ($detail->account_type) {
                 'Player'  => "registered as a Player. {$label}",
@@ -215,7 +214,8 @@ class RegistrationController extends Controller
             $currentDate,
             $allDetails->where('account_type', 'Player'),
             $allDetails->where('account_type', 'Reserve'),
-            $allDetails->where('account_type', 'Shirt')
+            $allDetails->where('account_type', 'Shirt'),
+            $user->total_payment
         );
 
         foreach ($allDetails->pluck('email')->unique() as $recipientEmail) {
@@ -229,9 +229,8 @@ class RegistrationController extends Controller
         }
     }
 
-    protected function createConfirmationEmailBody(string $teamName, string $date, Collection $playerDetails, Collection $reserveDetails, Collection $shirtDetails): string
+    protected function createConfirmationEmailBody(string $teamName, string $date, Collection $playerDetails, Collection $reserveDetails, Collection $shirtDetails, $totalPayment): string
     {
-        // 1. Generate list items for MAIN PLAYERS
         $playerListHtml = '';
         if ($playerDetails->isNotEmpty()) {
             foreach ($playerDetails as $index => $detail) {
@@ -241,89 +240,87 @@ class RegistrationController extends Controller
             $playerListHtml = '<li>No players registered (Team only registered for shirts).</li>';
         }
 
-    // 2. Generate list items for RESERVE PLAYERS
-    $reserveListHtml = '';
-    $additionalReserveRow = '';
-    if ($reserveDetails->isNotEmpty()) {
-        foreach ($reserveDetails as $index => $detail) {
-            $reserveListHtml .= '<li>' . htmlspecialchars($detail->full_name) . '</li>';
+        $reserveListHtml = '';
+        $additionalReserveRow = '';
+        if ($reserveDetails->isNotEmpty()) {
+            foreach ($reserveDetails as $index => $detail) {
+                $reserveListHtml .= '<li>' . htmlspecialchars($detail->full_name) . '</li>';
+            }
+            $additionalReserveRow = '
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Reserve Players:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">
+                    <ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">
+                        ' . $reserveListHtml . '
+                    </ul>
+                </td>
+            </tr>';
         }
-        $additionalReserveRow = '
-        <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Reserve Players:</strong></td>
-            <td style="padding: 10px; border: 1px solid #ddd;">
-                <ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">
-                    ' . $reserveListHtml . '
-                </ul>
-            </td>
-        </tr>';
-    }
 
-    // 3. Generate list items for ADDITIONAL SHIRTS
-    $shirtListHtml = '';
-    $additionalShirtRow = '';
-    if ($shirtDetails->isNotEmpty()) {
-        foreach ($shirtDetails as $index => $detail) {
-            $shirtListHtml .= '<li>' . htmlspecialchars($detail->full_name) . '</li>';
+        $shirtListHtml = '';
+        $additionalShirtRow = '';
+        if ($shirtDetails->isNotEmpty()) {
+            foreach ($shirtDetails as $index => $detail) {
+                $shirtListHtml .= '<li>' . htmlspecialchars($detail->full_name) . '</li>';
+            }
+            $additionalShirtRow = '
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Additional Shirts:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">
+                    <ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">
+                        ' . $shirtListHtml . '
+                    </ul>
+                </td>
+            </tr>';
         }
-        $additionalShirtRow = '
-        <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Additional Shirts:</strong></td>
-            <td style="padding: 10px; border: 1px solid #ddd;">
-                <ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">
-                    ' . $shirtListHtml . '
-                </ul>
-            </td>
-        </tr>';
+
+        return '<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+        <h2 style="color: #4CAF50; text-align: center;">Congratulations! Registration Received!</h2>
+        <hr style="border: 0; border-top: 2px solid #eee;">
+
+        <p>Dear Captain of <strong>' . htmlspecialchars($teamName) . '</strong>,</p>
+
+        <p>We are thrilled to confirm that your team\'s registration for the BB 88 Advertising & Digital Solution Inc. event has been successfully received!</p>
+
+        <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; width: 35%;"><strong>Team Name:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">' . htmlspecialchars($teamName) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Registration Date:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">' . htmlspecialchars($date) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Status:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong style="color: #007bff;">PENDING QUALIFICATION</strong></td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Main Players:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">
+                    <ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">
+                        ' . $playerListHtml . '
+                    </ul>
+                </td>
+            </tr>
+            ' . $additionalReserveRow . '
+            ' . $additionalShirtRow . '
+        </table>
+
+        <div style="background-color: #e6f7ff; padding: 15px; border-left: 5px solid #007bff; margin: 25px 0;">
+            <strong style="color: #0056b3;">Important Notes:</strong>
+            <ul style="margin-top: 10px; margin-bottom: 10px;">
+                <li><strong>No payment is required right now.</strong></li>
+                <li>total payment to be paid after the team qualifies ₱' . number_format($totalPayment, 2) . ', a separate email will be sent with instructions for the full team payment.</li>
+            </ul>
+        </div>
+
+        <p>Thank you for registering! We wish your team the best of luck in the qualification phase.</p>
+
+        <p style="margin-top: 30px; font-size: 0.9em; color: #777;">
+            Best regards,<br>
+            The BB 88 Advertising & Digital Solution Inc. Team
+        </p>
+    </div>';
     }
-
-    return '<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
-    <h2 style="color: #4CAF50; text-align: center;">Congratulations! Registration Received!</h2>
-    <hr style="border: 0; border-top: 2px solid #eee;">
-
-    <p>Dear Captain of <strong>' . htmlspecialchars($teamName) . '</strong>,</p>
-
-    <p>We are thrilled to confirm that your team\'s registration for the BB 88 Advertising & Digital Solution Inc. event has been successfully received!</p>
-
-    <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
-        <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9; width: 35%;"><strong>Team Name:</strong></td>
-            <td style="padding: 10px; border: 1px solid #ddd;">' . htmlspecialchars($teamName) . '</td>
-        </tr>
-        <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Registration Date:</strong></td>
-            <td style="padding: 10px; border: 1px solid #ddd;">' . htmlspecialchars($date) . '</td>
-        </tr>
-        <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Status:</strong></td>
-            <td style="padding: 10px; border: 1px solid #ddd;"><strong style="color: #007bff;">PENDING QUALIFICATION</strong></td>
-        </tr>
-        <tr>
-            <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Main Players:</strong></td>
-            <td style="padding: 10px; border: 1px solid #ddd;">
-                <ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">
-                    ' . $playerListHtml . '
-                </ul>
-            </td>
-        </tr>
-        ' . $additionalReserveRow . '
-        ' . $additionalShirtRow . '
-    </table>
-
-    <div style="background-color: #e6f7ff; padding: 15px; border-left: 5px solid #007bff; margin: 25px 0;">
-        <strong style="color: #0056b3;">Important Notes:</strong>
-        <ul style="margin-top: 10px; margin-bottom: 10px;">
-            <li><strong>No payment is required right now.</strong></li>
-            <li>Once your team qualifies, a separate email will be sent to you with the instructions for the full team payment.</li>
-        </ul>
-    </div>
-
-    <p>Thank you for registering! We wish your team the best of luck in the qualification phase.</p>
-
-    <p style="margin-top: 30px; font-size: 0.9em; color: #777;">
-        Best regards,<br>
-        The BB 88 Advertising & Digital Solution Inc. Team
-    </p>
-</div>';
-}
 }

@@ -191,6 +191,15 @@ const getError = (fieldName, value = null, type = null) => {
         if (duplicateUsernames.value.includes(value.trim().toLowerCase()))
             return "Duplicate IGN/Username detected";
     }
+
+    if (type === "size_shirt") {
+        if (!value || value === "") {
+            // Only return the string if we have a backend error or manual trigger
+            return validationErrors.value[fieldName]
+                ? "Please select a shirt size"
+                : null;
+        }
+    }
     return null;
 };
 
@@ -210,7 +219,8 @@ const registerTeam = async () => {
         return (
             getError(null, u.email, "email") ||
             getError(null, u.mobileNumber, "mobile") ||
-            getError(null, u.username, "username")
+            getError(null, u.username, "username") ||
+            getError(null, u.size_shirt, "size_shirt")
         );
     });
 
@@ -333,14 +343,30 @@ function acceptPolicy() {
     <div
         class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
     >
-        <div class="mx-auto w-full max-w-[1320px] px-5">
-            <div class="flex flex-col md:flex-row justify-between">
-                <div>
-                    <!-- <img
-                        src="@/assets/landing-cinco-logo.png"
-                        class="mx-auto sm:h-[70px] h-auto sm:w-auto w-full pb-5"
-                        alt=""
-                    /> -->
+        <div class="mx-auto w-full max-w-[1500px]">
+            <div
+                class="flex flex-col gap-5 xl:flex-row justify-between items-center"
+            >
+                <div class="mt-4 relative w-full max-w-[650px] px-5">
+                    <div
+                        class="absolute inset-0 opacity-80"
+                        style="
+                            background: linear-gradient(
+                                to right,
+                                rgba(20, 124, 195, 0),
+                                #147cc3 25%,
+                                #bf38a6 75%,
+                                rgba(191, 56, 166, 0)
+                            );
+                        "
+                    ></div>
+                    <div class="mx-auto w-full max-w-[1320px]">
+                        <h1
+                            class="font-gaming text-center md:pt-0 pt-2 text-white text-lg relative z-10"
+                        >
+                            Registration starts NOW until April 30, 2026
+                        </h1>
+                    </div>
                 </div>
 
                 <div
@@ -355,7 +381,7 @@ function acceptPolicy() {
                 </div>
             </div>
 
-            <div class="text-[#DCDBE0] flex gap-5 mt-7 text-lg">
+            <div class="text-[#DCDBE0] flex gap-5 mt-7 px-5 text-lg">
                 <a href="/">BACK</a>
                 <div>|</div>
                 <div>
@@ -822,6 +848,25 @@ function acceptPolicy() {
                                     <option value="XL">XL</option>
                                     <option value="XXL">XXL</option>
                                 </select>
+
+                                <p
+                                    v-if="
+                                        getError(
+                                            `details.${index}.size_shirt`,
+                                            p.size_shirt,
+                                            'size_shirt',
+                                        )
+                                    "
+                                    class="text-red-500 text-xs pt-1"
+                                >
+                                    {{
+                                        getError(
+                                            `details.${index}.size_shirt`,
+                                            p.mobileNumber,
+                                            "size_shirt",
+                                        )
+                                    }}
+                                </p>
                             </div>
                         </template>
                     </div>
@@ -975,15 +1020,42 @@ function acceptPolicy() {
                             <select
                                 v-model="reservePlayer.size_shirt"
                                 required
-                                class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
+                                @change="handleInput('details.5.size_shirt')"
+                                class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2"
+                                :class="
+                                    getError(
+                                        'details.5.size_shirt',
+                                        reservePlayer.size_shirt,
+                                        'size_shirt',
+                                    )
+                                        ? 'ring-red-500'
+                                        : 'ring-[#bf38a6]'
+                                "
                             >
-                                <option value="" disabled selected>
-                                    Select Size
-                                </option>
+                                <option value="" disabled>Select Size</option>
                                 <option value="L">L</option>
                                 <option value="XL">XL</option>
                                 <option value="XXL">XXL</option>
                             </select>
+
+                            <p
+                                v-if="
+                                    getError(
+                                        'details.5.size_shirt',
+                                        reservePlayer.size_shirt,
+                                        'size_shirt',
+                                    )
+                                "
+                                class="text-red-500 text-xs pt-1"
+                            >
+                                {{
+                                    getError(
+                                        "details.5.size_shirt",
+                                        reservePlayer.size_shirt,
+                                        "size_shirt",
+                                    )
+                                }}
+                            </p>
                         </div>
                     </div>
 
@@ -1167,15 +1239,51 @@ function acceptPolicy() {
                                             availShirtDetails[index].size_shirt
                                         "
                                         required
-                                        class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
+                                        @change="
+                                            handleInput(
+                                                `details.${INITIAL_PLAYER_COUNT + index}.size_shirt`,
+                                            )
+                                        "
+                                        class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2"
+                                        :class="
+                                            getError(
+                                                `details.${INITIAL_PLAYER_COUNT + index}.size_shirt`,
+                                                availShirtDetails[index]
+                                                    .size_shirt,
+                                                'size_shirt',
+                                            )
+                                                ? 'ring-red-500'
+                                                : 'ring-[#bf38a6]'
+                                        "
                                     >
-                                        <option value="" disabled selected>
+                                        <option value="" disabled>
                                             Select Size
                                         </option>
                                         <option value="L">L</option>
                                         <option value="XL">XL</option>
                                         <option value="XXL">XXL</option>
                                     </select>
+
+                                    <p
+                                        v-if="
+                                            getError(
+                                                `details.${INITIAL_PLAYER_COUNT + index}.size_shirt`,
+                                                availShirtDetails[index]
+                                                    .size_shirt,
+                                                'size_shirt',
+                                            )
+                                        "
+                                        class="text-red-500 text-xs pt-1"
+                                    >
+                                        {{
+                                            getError(
+                                                `details.${INITIAL_PLAYER_COUNT + index}.size_shirt`,
+                                                availShirtDetails[index]
+                                                    .size_shirt,
+                                                "size_shirt",
+                                            )
+                                        }}
+                                    </p>
                                 </div>
                             </template>
                         </div>

@@ -14,6 +14,10 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    totalPayment: {
+        type: [Number, String],
+        required: true,
+    },
 });
 
 onMounted(() => {
@@ -77,9 +81,18 @@ onMounted(() => {
                         <i> THANK YOU FOR YOUR SUCCESSFUL REGISTRATION </i>
                     </h1>
 
-                    <p class="text-white text-center text-lg px-4 pb-10">
-                        NO PAYMENT IS REQUIRED RIGHT NOW, ONCE THE TEAM
-                        QUALIFIES,
+                    <p
+                        class="text-white text-center text-lg px-4 pb-10 uppercase"
+                    >
+                        TOTAL PAYMENT TO BE PAID AFTER THE TEAM QUALIFIES ₱{{
+                            Number(props.totalPayment).toLocaleString(
+                                undefined,
+                                {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                },
+                            )
+                        }},
                         <br class="hidden sm:block" />
                         A SEPARATE EMAIL WILL BE SENT WITH INSTRUCTIONS FOR THE
                         FULL TEAM PAYMENT.

@@ -17,9 +17,10 @@ class PaymentController extends Controller
             return redirect('/register')->with('error', 'Registration token missing.');
         }
 
+        // Added 'total_payment' to the select statement
         $user = User::where('token', $token)
             ->where('transaction_status', 'pending_registration')
-            ->select('id', 'team_name', 'token')
+            ->select('id', 'team_name', 'token', 'total_payment')
             ->first();
 
         if (!$user) {
@@ -27,8 +28,9 @@ class PaymentController extends Controller
         }
 
         return Inertia::render('auth/payment/Success', [
-            'token'    => $user->token,
-            'teamName' => $user->team_name,
+            'token'        => $user->token,
+            'teamName'     => $user->team_name,
+            'totalPayment' => $user->total_payment, // Passing the actual amount to Vue
         ]);
     }
 }
