@@ -486,7 +486,7 @@ const registerTeam = () => {
                                 each. To buy extra shirts, click the '+' button
                                 <br />
                                 (₱600 per shirt). Ensure all extra shirt owners
-                                have unique contact details. Click 'Submit'
+                                have unique contact details. Click 'Pay Now'
                                 <br />
                                 once your total is correct.
                             </p>
@@ -544,49 +544,83 @@ const registerTeam = () => {
                                         :disabled="!agreedToPrivacy"
                                         class="sm:py-[3px] py-[5px] sm:mt-[23px] mt-4 w-full text-2xl bg-green-600 text-white rounded-md border-2 border-white disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
                                     >
-                                        Submit
+                                        Pay Now
                                     </button>
                                 </div>
                             </div>
                             <p
                                 class="text-[#d8d4d4] xl:text-start text-center text-sm pt-2"
                             >
-                                Note: Every add-on shirt is worth ₱ 600.00
-                                (Purchasing an add-on shirt does not grant
-                                eligibility to play).
+                                Note: Every add on shirt is worth ₱ 600.00 (Any
+                                add on shirt does not mean they can play)
                                 <span class="hidden sm:inline">
                                     <br />
                                 </span>
-                                The 5 main players automatically receive shirts
-                                upon registration, totaling
+                                (The 5 listed player's automatically has Shirt
+                                upon Registration, costing
                                 {{
                                     BASE_REGISTRATION_FEE.toLocaleString(
                                         "en-PH",
-                                        {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        },
+                                        { minimumFractionDigits: 2 },
                                     )
-                                }}.
-
-                                <strong
-                                    >No payment is required
-                                    <span class="hidden sm:inline">
-                                        <br />
-                                    </span>
-                                    right now,</strong
-                                >
-                                once the team qualifies, a separate email will
-                                be sent with instructions for the full team
-                                payment.
+                                }})
                                 <span class="block mt-1 italic text-[#f3f3f3]">
-                                    * Reserve players do not have an included
-                                    shirt; they only receive one and become
-                                    eligible to play if a main player is
-                                    replaced.
+                                    * Reserve players do not have a shirt
+                                    included, they will only receive one and be
+                                    eligible to play if a main player backs out.
                                 </span>
                             </p>
                         </div>
+                    </div>
+
+                    <
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            After submitting, the payment gateway will appear.
+                            Choose your preferred payment method.
+                            <strong>Note:</strong> If you are using an external
+                            payment app on your phone, ensure you return to this
+                            website to complete the next step.
+                        </p>
+                        <img
+                            src="@/assets/method1.png"
+                            class="img-fluid rounded-2xl"
+                            alt="Payment Method Selection"
+                        />
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            Next is the Customer Information. The system will
+                            automatically use the
+                            <strong>First Player's Email</strong> and the
+                            <strong>Team Name</strong>. Entering a phone number
+                            is optional. Click submit when you are ready.
+                        </p>
+                        <img
+                            src="@/assets/method2.png"
+                            class="img-fluid rounded-2xl"
+                            alt="Customer Information"
+                        />
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            <span class="text-yellow-400 font-bold"
+                                >MOST IMPORTANT:</span
+                            >
+                            Once the receipt appears, click
+                            <strong>"Return to Merchant"</strong> and wait a few
+                            seconds. The system is processing your registration
+                            and sending your confirmation emails/SMS. Do not
+                            close the page until you see the final success
+                            screen!
+                        </p>
+                        <img
+                            src="@/assets/method3.png"
+                            class="img-fluid rounded-2xl"
+                            alt="Return to Merchant"
+                        />
                     </div>
 
                     <div class="p-2 border-2 border-white mt-4">

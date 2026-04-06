@@ -22,6 +22,7 @@ class User extends Model
         'barangay',
         'postal_code',
         'paymongo_checkout_session_id',
+        'token',
         'transaction_status'
     ];
 

@@ -1,12 +1,13 @@
 <script setup>
-import { defineProps, onMounted } from "vue";
-import { Head, Link } from "@inertiajs/vue3";
+import { defineProps, onMounted } from "vue"; // Added onMounted
+import { Head } from "@inertiajs/vue3";
 import logoIcon from "@/assets/logo.png";
 
+// Define the constant key to match the Registration page
 const LOCAL_STORAGE_KEY = "teamRegistrationDraft";
 
 const props = defineProps({
-    token: {
+    sessionId: {
         type: String,
         required: true,
     },
@@ -16,6 +17,7 @@ const props = defineProps({
     },
 });
 
+// Clear the registration draft only when this page is reached (after payment)
 onMounted(() => {
     try {
         if (localStorage.getItem(LOCAL_STORAGE_KEY)) {
@@ -31,9 +33,8 @@ onMounted(() => {
 <template>
     <Head>
         <link rel="icon" type="image/png" :href="logoIcon" />
-        <title>Registration Success | BB 88 Advertising</title>
+        <title>BB 88 Advertising & Digital Solution Inc.</title>
     </Head>
-
     <div
         class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
     >
@@ -49,7 +50,7 @@ onMounted(() => {
                         <img
                             src="@/assets/landing-bb88-logo.png"
                             class="sm:h-[50px] sm:w-auto h-auto w-full"
-                            alt="BB88 Logo"
+                            alt=""
                         />
                     </div>
                 </div>
@@ -77,12 +78,10 @@ onMounted(() => {
                         <i> THANK YOU FOR YOUR SUCCESSFUL REGISTRATION </i>
                     </h1>
 
-                    <p class="text-white text-center text-lg px-4 pb-10">
-                        NO PAYMENT IS REQUIRED RIGHT NOW, ONCE THE TEAM
-                        QUALIFIES,
-                        <br class="hidden sm:block" />
-                        A SEPARATE EMAIL WILL BE SENT WITH INSTRUCTIONS FOR THE
-                        FULL TEAM PAYMENT.
+                    <p class="text-white text-center text-md">
+                        ALWAYS CHECK YOUR EMAILS OR MESSAGES TO DOWNLOAD THE
+                        <br />
+                        OFFICIAL APP WHERE YOU CAN LOG IN YOUR ACCOUNT!
                     </p>
                 </div>
             </div>

@@ -8,6 +8,7 @@ import logoIcon from "@/assets/logo.png";
 
 const SHIRT_PRICE = 600;
 const INITIAL_PLAYER_COUNT = 5;
+// Updated: Included +1 for the mandatory Reserve Player (Total 6 players)
 const BASE_REGISTRATION_FEE = (INITIAL_PLAYER_COUNT + 1) * SHIRT_PRICE;
 const LOCAL_STORAGE_KEY = "teamRegistrationDraft";
 
@@ -26,13 +27,14 @@ const teamName = ref("");
 const postalCode = ref("");
 const players = ref([]);
 
+// Reserve Player State
 const reservePlayer = ref({
     fullName: "",
     username: "",
     email: "",
     mobileNumber: "",
     accountType: "Reserve",
-    size_shirt: "",
+    size_shirt: "", // Ensure size_shirt is initialized
 });
 
 const additionalShirtCount = ref(0);
@@ -84,6 +86,7 @@ const loadFormState = () => {
             }));
 
         if (data.reservePlayer) reservePlayer.value = data.reservePlayer;
+
         additionalShirtCount.value = data.additionalShirtCount || 0;
         availShirtDetails.value = data.availShirtDetails || [];
     } else {
@@ -112,6 +115,7 @@ const resetPlayers = () => {
 
 const saveFormState = () => {
     if (isSuccessfullySubmitted.value) return;
+
     localStorage.setItem(
         LOCAL_STORAGE_KEY,
         JSON.stringify({
@@ -140,6 +144,7 @@ watch(
     { deep: true },
 );
 
+// Updated: Always include reservePlayer in allUsers for mandatory validation
 const allUsers = computed(() => {
     return [...players.value, reservePlayer.value, ...availShirtDetails.value];
 });
@@ -176,10 +181,12 @@ const getError = (fieldName, value = null, type = null) => {
     if (fieldName && validationErrors.value[fieldName]) {
         return validationErrors.value[fieldName][0];
     }
+
     if (type === "email" && value) {
         if (duplicateEmails.value.includes(value.trim().toLowerCase()))
             return "Duplicate email detected";
     }
+
     if (type === "mobile" && value) {
         const valStr = String(value).trim();
         if (duplicateMobiles.value.includes(valStr))
@@ -187,10 +194,12 @@ const getError = (fieldName, value = null, type = null) => {
         if (valStr.length > 0 && valStr.length !== 10)
             return "Mobile number must be 10 digits";
     }
+
     if (type === "username" && value && value.toLowerCase() !== "n/a") {
         if (duplicateUsernames.value.includes(value.trim().toLowerCase()))
             return "Duplicate IGN/Username detected";
     }
+
     return null;
 };
 
@@ -206,6 +215,7 @@ const registerTeam = async () => {
     submitError.value = null;
     validationErrors.value = {};
 
+    // Local Validation for Duplicates and Formatting
     const hasLocalErrors = allUsers.value.some((u) => {
         return (
             getError(null, u.email, "email") ||
@@ -221,11 +231,13 @@ const registerTeam = async () => {
         const firstError = document.querySelector(
             ".ring-red-500, .text-red-500",
         );
-        if (firstError)
+        if (firstError) {
             firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
         return;
     }
 
+    // Captain Validation
     const captainEmail = players.value[0]?.email;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!captainEmail || !emailRegex.test(captainEmail)) {
@@ -236,7 +248,9 @@ const registerTeam = async () => {
 
     isSubmitting.value = true;
 
+    // Updated Payload: Always include reservePlayer in the finalDetails
     const finalDetails = [...players.value, reservePlayer.value];
+
     const allDetailUsers = [...finalDetails, ...availShirtDetails.value].map(
         (u) => ({
             fullName: u.fullName,
@@ -266,23 +280,15 @@ const registerTeam = async () => {
     try {
         const response = await axios.post("/api/register", payload);
 
-        // UPDATED LOGIC: Check for the token returned by RegistrationController
-        if (response.data.token) {
+        if (response.data.checkout_url) {
             isSubmitting.value = false;
             isProcessingPayment.value = true;
-            isSuccessfullySubmitted.value = true;
-
-            // Clear draft
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-
-            // Manual redirect using the token
             setTimeout(() => {
-                window.location.href = `/payment/success?token=${response.data.token}`;
-            }, 1200);
+                window.location.href = response.data.checkout_url;
+            }, 500);
         }
     } catch (error) {
         isProcessingPayment.value = false;
-        isSubmitting.value = false;
         if (error.response && error.response.status === 422) {
             validationErrors.value = error.response.data.errors;
             submitError.value =
@@ -291,14 +297,19 @@ const registerTeam = async () => {
             const firstError = document.querySelector(
                 ".ring-red-500, .text-red-500",
             );
-            if (firstError)
+            if (firstError) {
                 firstError.scrollIntoView({
                     behavior: "smooth",
                     block: "center",
                 });
+            }
         } else {
             submitError.value =
                 error.response?.data?.message || "An error occurred.";
+        }
+    } finally {
+        if (!isProcessingPayment.value) {
+            isSubmitting.value = false;
         }
     }
 };
@@ -1328,55 +1339,17 @@ function acceptPolicy() {
                                         :disabled="
                                             isSubmitting || isProcessingPayment
                                         "
-                                        class="sm:py-[3px] py-[5px] sm:mt-[23px] mt-4 w-full text-2xl bg-green-register text-white rounded-md border-2 border-white disabled:opacity-50 transition-all duration-200 active:scale-95"
+                                        class="sm:py-[3px] py-[5px] sm:mt-[23px] mt-4 w-full text-2xl bg-green-register text-white rounded-md border-2 border-white disabled:opacity-50"
                                     >
                                         {{
                                             isSubmitting
                                                 ? "Submitting..."
                                                 : isProcessingPayment
-                                                  ? "Redirecting..."
-                                                  : "Submit"
+                                                  ? "Processing..."
+                                                  : "Pay Now"
                                         }}
                                     </button>
                                 </div>
-
-                                <Teleport to="body">
-                                    <div
-                                        v-if="
-                                            isSubmitting || isProcessingPayment
-                                        "
-                                        class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm"
-                                    >
-                                        <div
-                                            class="relative flex items-center justify-center mb-6"
-                                        >
-                                            <div
-                                                class="w-20 h-20 border-4 border-brand-pink/20 border-t-brand-pink rounded-full animate-spin"
-                                            ></div>
-                                            <img
-                                                :src="logoIcon"
-                                                class="absolute w-10 h-10 object-contain"
-                                                alt="Logo"
-                                            />
-                                        </div>
-
-                                        <h2
-                                            class="text-white text-2xl font-gaming italic tracking-widest animate-pulse"
-                                        >
-                                            {{
-                                                isSubmitting
-                                                    ? "REGISTERING TEAM..."
-                                                    : "PREPARING SUCCESS PAGE..."
-                                            }}
-                                        </h2>
-                                        <p
-                                            class="text-gray-400 mt-2 text-sm uppercase tracking-tighter"
-                                        >
-                                            Please do not close this window or
-                                            refresh the page.
-                                        </p>
-                                    </div>
-                                </Teleport>
                             </div>
 
                             <p
@@ -1395,39 +1368,23 @@ function acceptPolicy() {
                             <p
                                 class="text-[#d8d4d4] xl:text-start text-center text-sm pt-2"
                             >
-                                Note: Every add-on shirt is worth ₱ 600.00
-                                (Purchasing an add-on shirt does not grant
-                                eligibility to play).
+                                Note: Every add on shirt is worth ₱ 600.00 (Any
+                                add on shirt does not mean they can play)
                                 <span class="hidden sm:inline">
                                     <br />
                                 </span>
-                                The 5 main players automatically receive shirts
-                                upon registration, totaling
+                                (The 5 listed player's automatically has Shirt
+                                upon Registration, costing
                                 {{
                                     BASE_REGISTRATION_FEE.toLocaleString(
                                         "en-PH",
-                                        {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        },
+                                        { minimumFractionDigits: 2 },
                                     )
-                                }}.
-
-                                <strong
-                                    >No payment is required
-                                    <span class="hidden sm:inline">
-                                        <br />
-                                    </span>
-                                    right now,</strong
-                                >
-                                once the team qualifies, a separate email will
-                                be sent with instructions for the full team
-                                payment.
+                                }})
                                 <span class="block mt-1 italic text-[#f3f3f3]">
-                                    * Reserve players do not have an included
-                                    shirt; they only receive one and become
-                                    eligible to play if a main player is
-                                    replaced.
+                                    * Reserve players do not have a shirt
+                                    included, they will only receive one and be
+                                    eligible to play if a main player backs out.
                                 </span>
                             </p>
                         </div>

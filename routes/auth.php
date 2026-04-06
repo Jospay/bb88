@@ -18,15 +18,15 @@ Route::get('/register/how', function () {
 
 // --- API Endpoint for Registration ---
 Route::post('/api/register', [RegistrationController::class, 'register']);
+Route::get('/payment/success', [PaymentController::class, 'success'])->name('payment.success');
+
+// Route::get('/payment/success', [PaymentController::class, 'success']);
 
 // 1. PayMongo Success URL (Verification Handler)
-Route::get('/payment/verify', [RegistrationController::class, 'handlePaymentSuccess']);
-
-// 2. Final Success Page (Inertia Renderer)
-Route::get('/payment/success', [PaymentController::class, 'success']);
+// Route::get('/payment/verify', [RegistrationController::class, 'handlePaymentSuccess']);
 
 // 3. PayMongo Webhook (Server-to-Server)
-Route::post('/api/paymongo/webhook', [RegistrationController::class, 'handlePaymongoWebhook']);
+// Route::post('/api/paymongo/webhook', [RegistrationController::class, 'handlePaymongoWebhook']);
 
 // Route::get('/admin/login', function () {
 //     return Inertia::render('auth/login/Index');

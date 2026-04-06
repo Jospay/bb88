@@ -25,6 +25,7 @@ return new class extends Migration
             $table->string('postal_code')->nullable();
 
             $table->string('paymongo_checkout_session_id')->nullable();
+            $table->string('token')->nullable();
             $table->enum('transaction_status', ['pending_registration','pending_payment','paid','failed'])->default('pending_registration');
 
             // Timestamps

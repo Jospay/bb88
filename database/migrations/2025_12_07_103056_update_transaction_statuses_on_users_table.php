@@ -9,15 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // CRITICAL FIX: Update the ENUM column to include all statuses used in your controller.
             $table->enum('transaction_status', [
-                'pending_registration', // Status used on initial creation
-                'pending_payment',      // Status used after PayMongo session creation
-                'paid',                 // Status used on payment success
-                'failed'                // Status used on payment failure
+                'pending_registration',
+                'pending_payment',
+                'paid',
+                'failed'
             ])
-            ->default('pending_registration') // Setting the default to the first logical status
-            ->change(); // The 'change()' method applies the modification to the existing column
+            ->default('pending_registration')
+            ->change();
         });
     }
 

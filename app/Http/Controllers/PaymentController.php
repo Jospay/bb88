@@ -10,27 +10,25 @@ class PaymentController extends Controller
 {
     public function success(Request $request)
     {
-        $sessionId = $request->query('id');
+        // Fetch using the unique token instead of the ID
+        $token = $request->query('token');
 
-        if (!$sessionId) {
-            return redirect('/register')->with('error', 'Payment session ID missing.');
+        if (!$token) {
+            return redirect('/register')->with('error', 'Registration token missing.');
         }
 
-        // --- Core Logic: Locate the registration using the session ID in the 'users' table ---
-        $user = User::where('paymongo_checkout_session_id', $sessionId)
-            ->where('transaction_status', 'paid')
-            ->select('team_name')
+        $user = User::where('token', $token)
+            ->where('transaction_status', 'pending_registration')
+            ->select('id', 'team_name', 'token')
             ->first();
 
-        // Check if a user/registration was found
         if (!$user) {
-            return redirect('/register')->with('error', 'Registration not found for this session ID.');
+            return redirect('/register')->with('error', 'Registration records not found.');
         }
 
-        // Pass the session ID and the team name to the Vue component
         return Inertia::render('auth/payment/Success', [
-            'sessionId' => $sessionId,
-            'teamName' => $user->team_name, // CHANGED: Access team_name via the $user object
+            'token'    => $user->token,
+            'teamName' => $user->team_name,
         ]);
     }
 }
