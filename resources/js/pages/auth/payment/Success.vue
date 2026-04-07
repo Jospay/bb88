@@ -84,7 +84,7 @@ onMounted(() => {
                     <p
                         class="text-white text-center text-lg px-4 pb-10 uppercase"
                     >
-                        TOTAL PAYMENT TO BE PAID AFTER THE TEAM QUALIFIES ₱{{
+                        TOTAL PAYMENT TO BE PAID IS ₱{{
                             Number(props.totalPayment).toLocaleString(
                                 undefined,
                                 {
@@ -92,7 +92,8 @@ onMounted(() => {
                                     maximumFractionDigits: 2,
                                 },
                             )
-                        }},
+                        }}
+                        AFTER THE TEAM QUALIFIES,
                         <br class="hidden sm:block" />
                         A SEPARATE EMAIL WILL BE SENT WITH INSTRUCTIONS FOR THE
                         FULL TEAM PAYMENT.

@@ -79,111 +79,138 @@ class RegistrationController extends Controller
     }
 
     public function register(Request $request)
-    {
-        $teamData = $request->input('team');
-        $detailUsers = $request->input('details', []);
+{
+    $teamData = $request->input('team');
+    $detailUsers = $request->input('details', []);
 
-        foreach ($detailUsers as $key => $detail) {
-            if (isset($detail['accountType']) && $detail['accountType'] === 'Shirt') {
-                $detailUsers[$key]['username'] = null;
-            }
+    // Force username = null for Shirt
+    foreach ($detailUsers as $key => $detail) {
+        if (isset($detail['accountType']) && $detail['accountType'] === 'Shirt') {
+            $detailUsers[$key]['username'] = null;
         }
-        $request->merge(['details' => $detailUsers]);
+    }
 
-        $validator = Validator::make($request->all(), [
-            'team.team_name' => 'required|string|max:255|unique:users,team_name',
-            'team.total_payment' => 'required|numeric',
-            'team.region' => 'required|string',
-            'team.province' => 'required|string',
-            'team.city' => 'required|string',
-            'team.barangay' => 'required|string',
-            'team.postal_code' => 'required|string',
-            'details' => 'required|array|min:1',
-            'details.*.fullName' => 'required|string|max:255',
-            'details.*.username' => 'required|string|max:255',
-            'details.*.email' => 'required|email|unique:detail_user,email',
-            'details.*.mobileNumber' => 'required|string|digits:10|unique:detail_user,mobile_number',
-            'details.*.size_shirt' => 'required|string',
-            'details.*.accountType' => 'required|in:Player,Shirt,Reserve',
-        ]);
+    $request->merge(['details' => $detailUsers]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+    $validator = Validator::make($request->all(), [
+        'team.team_name' => 'required|string|max:255|unique:users,team_name',
+        'team.agree' => 'accepted',
+        'team.total_payment' => 'required|numeric',
+        'team.region' => 'required|string',
+        'team.province' => 'required|string',
+        'team.city' => 'required|string',
+        'team.barangay' => 'required|string',
+        'team.postal_code' => 'required|string',
 
-        $uniqueToken = Str::random(40);
-        $user = null;
+        'details' => 'required|array|min:1',
+        'details.*.fullName' => 'required|string|max:255',
 
-        DB::beginTransaction();
-        try {
-            $user = User::create([
-                'team_name' => $teamData['team_name'],
-                'total_payment' => $teamData['total_payment'],
-                'additional_shirt_count' => $teamData['additional_shirt_count'] ?? 0,
-                'country' => $teamData['country'] ?? 'Philippines',
-                'region' => $teamData['region'],
-                'province' => $teamData['province'] ?? null,
-                'city' => $teamData['city'],
-                'barangay' => $teamData['barangay'] ?? null,
-                'postal_code' => $teamData['postal_code'] ?? null,
-                'token' => $uniqueToken,
-                'transaction_status' => 'pending_registration',
-            ]);
+        // ✅ Changed: now nullable
+        'details.*.username' => 'nullable|string|max:255',
 
-            $percentageTypes = PercentageType::all();
-            foreach ($percentageTypes as $type) {
-                PercentageBreakdowns::create([
-                    'user_id' => $user->id,
-                    'percentage_type_id' => $type->id,
-                    'total_earning' => $user->total_payment * ($type->value / 100),
-                ]);
-            }
+        'details.*.email' => 'required|email|unique:detail_user,email',
+        'details.*.mobileNumber' => 'required|string|digits:10|unique:detail_user,mobile_number',
+        'details.*.size_shirt' => 'required|string',
+        'details.*.accountType' => 'required|in:Player,Shirt,Reserve',
+    ], [
+        'team.agree.accepted' => 'The Privacy Policy must be accepted to proceed.'
+    ]);
 
-            $qrCodeDirectory = public_path(self::QR_CODE_PATH);
-            if (!is_dir($qrCodeDirectory)) mkdir($qrCodeDirectory, 0755, true);
-
-            $lastDetail = DetailUser::orderBy('id', 'desc')->first();
-            $lastNumber = ($lastDetail && preg_match('/BB88(\d+)/', $lastDetail->qrcode_img, $matches)) ? (int)$matches[1] : 0;
-
-            foreach ($detailUsers as $detail) {
-                $lastNumber++;
-                $qrPlain = 'BB88' . str_pad($lastNumber, 6, '0', STR_PAD_LEFT);
-                $qrImg = $qrPlain . '.png';
-                $qrHashed = Str::uuid()->toString();
-
-                DetailUser::create([
-                    'user_id' => $user->id,
-                    'full_name' => $detail['fullName'],
-                    'username' => $detail['username'] ?? null,
-                    'email' => $detail['email'],
-                    'mobile_number' => $detail['mobileNumber'],
-                    'account_type' => $detail['accountType'],
-                    'size_shirt' => $detail['size_shirt'],
-                    'qrcode_name' => $qrHashed,
-                    'qrcode_img' => $qrImg,
-                ]);
-
-                if (class_exists('QRcode')) {
-                    \QRcode::png($qrHashed, $qrCodeDirectory . $qrImg, QR_ECLEVEL_L, 10, 2);
+    // ✅ ADD THIS BLOCK (IMPORTANT FIX)
+    $validator->after(function ($validator) use ($detailUsers) {
+        foreach ($detailUsers as $index => $detail) {
+            // Only require username for Player & Reserve
+            if (in_array($detail['accountType'], ['Player', 'Reserve'])) {
+                if (empty($detail['username'])) {
+                    $validator->errors()->add(
+                        "details.$index.username",
+                        "The username field is required."
+                    );
                 }
             }
-
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollback();
-            Log::error("Registration Failed: " . $e->getMessage());
-            return response()->json(['message' => 'Registration failed.', 'error' => $e->getMessage()], 500);
         }
+    });
 
-        if ($user) {
-            $this->processNotifications($user);
-        }
-
-        return response()->json([
-            'message' => 'Registration successful.',
-            'token' => $uniqueToken
-        ], 200);
+    if ($validator->fails()) {
+        return response()->json(['errors' => $validator->errors()], 422);
     }
+
+    $uniqueToken = Str::random(40);
+    $user = null;
+
+    DB::beginTransaction();
+    try {
+        $user = User::create([
+            'team_name' => $teamData['team_name'],
+            'total_payment' => $teamData['total_payment'],
+            'additional_shirt_count' => $teamData['additional_shirt_count'] ?? 0,
+            'country' => $teamData['country'] ?? 'Philippines',
+            'region' => $teamData['region'],
+            'province' => $teamData['province'] ?? null,
+            'city' => $teamData['city'],
+            'barangay' => $teamData['barangay'] ?? null,
+            'postal_code' => $teamData['postal_code'] ?? null,
+            'token' => $uniqueToken,
+            'transaction_status' => 'pending_registration',
+        ]);
+
+        $percentageTypes = PercentageType::all();
+        foreach ($percentageTypes as $type) {
+            PercentageBreakdowns::create([
+                'user_id' => $user->id,
+                'percentage_type_id' => $type->id,
+                'total_earning' => $user->total_payment * ($type->value / 100),
+            ]);
+        }
+
+        $qrCodeDirectory = public_path(self::QR_CODE_PATH);
+        if (!is_dir($qrCodeDirectory)) mkdir($qrCodeDirectory, 0755, true);
+
+        $lastDetail = DetailUser::orderBy('id', 'desc')->first();
+        $lastNumber = ($lastDetail && preg_match('/BB88(\d+)/', $lastDetail->qrcode_img, $matches)) ? (int)$matches[1] : 0;
+
+        foreach ($detailUsers as $detail) {
+            $lastNumber++;
+            $qrPlain = 'BB88' . str_pad($lastNumber, 6, '0', STR_PAD_LEFT);
+            $qrImg = $qrPlain . '.png';
+            $qrHashed = Str::uuid()->toString();
+
+            DetailUser::create([
+                'user_id' => $user->id,
+                'full_name' => $detail['fullName'],
+                'username' => $detail['username'] ?? null,
+                'email' => $detail['email'],
+                'mobile_number' => $detail['mobileNumber'],
+                'account_type' => $detail['accountType'],
+                'size_shirt' => $detail['size_shirt'],
+                'qrcode_name' => $qrHashed,
+                'qrcode_img' => $qrImg,
+            ]);
+
+            if (class_exists('QRcode')) {
+                \QRcode::png($qrHashed, $qrCodeDirectory . $qrImg, QR_ECLEVEL_L, 10, 2);
+            }
+        }
+
+        DB::commit();
+    } catch (\Exception $e) {
+        DB::rollback();
+        Log::error("Registration Failed: " . $e->getMessage());
+        return response()->json([
+            'message' => 'Registration failed.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+
+    if ($user) {
+        $this->processNotifications($user);
+    }
+
+    return response()->json([
+        'message' => 'Registration successful.',
+        'token' => $uniqueToken
+    ], 200);
+}
 
     protected function processNotifications(User $user)
     {
@@ -196,7 +223,7 @@ class RegistrationController extends Controller
             if (in_array($detail->mobile_number, $sentNumbers)) continue;
 
             // Updated label to include the specific amount and "full team payment" phrasing
-            $label = "total payment to be paid after the team qualifies ₱{$formattedAmount}, a separate email will be sent with instructions for the full team payment.";
+            $label = "Total payment to be paid is ₱{$formattedAmount} after the team qualifies, a separate email will be sent with instructions for the full team payment.";
 
             $actionText = match ($detail->account_type) {
                 'Player'  => "registered as a Player. {$label}",
@@ -311,7 +338,7 @@ class RegistrationController extends Controller
             <strong style="color: #0056b3;">Important Notes:</strong>
             <ul style="margin-top: 10px; margin-bottom: 10px;">
                 <li><strong>No payment is required right now.</strong></li>
-                <li>total payment to be paid after the team qualifies ₱' . number_format($totalPayment, 2) . ', a separate email will be sent with instructions for the full team payment.</li>
+                <li>total payment to be paid is ₱' . number_format($totalPayment, 2) . ' after the team qualifies, a separate email will be sent with instructions for the full team payment.</li>
             </ul>
         </div>
 

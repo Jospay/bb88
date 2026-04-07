@@ -13,10 +13,10 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminSeeder::class,
-            UserSeeder::class,
-            DetailUserSeeder::class,
+            // UserSeeder::class,
+            // DetailUserSeeder::class,
             PercentageTypeSeeder::class,
-            PercentageBreakdownsSeeder::class,
+            // PercentageBreakdownsSeeder::class,
         ]);
     }
 }

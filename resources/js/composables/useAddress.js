@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, nextTick } from "vue";
 
 export function useAddress() {
     const regions = ref([]);
@@ -18,7 +18,7 @@ export function useAddress() {
 
     const isNcr = computed(() => {
         const region = regions.value.find(
-            (r) => r.name === selectedRegion.value
+            (r) => r.name === selectedRegion.value,
         );
         return region
             ? region.code === "130000000" || region.name.includes("NCR")
@@ -41,7 +41,7 @@ export function useAddress() {
         isLoadingProvinces.value = true;
         try {
             const res = await fetch(
-                `https://psgc.gitlab.io/api/regions/${regionCode}/provinces/`
+                `https://psgc.gitlab.io/api/regions/${regionCode}/provinces/`,
             );
             provinces.value = await res.json();
         } catch (err) {
@@ -71,7 +71,7 @@ export function useAddress() {
         isLoadingBarangays.value = true;
         try {
             const res = await fetch(
-                `https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`
+                `https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`,
             );
             barangays.value = await res.json();
         } catch (err) {
@@ -82,6 +82,7 @@ export function useAddress() {
     }
 
     watch(selectedRegion, async (val) => {
+        // 1. Reset all dependent fields immediately
         selectedProvince.value = "";
         selectedCity.value = "";
         selectedBarangay.value = "";
@@ -91,18 +92,27 @@ export function useAddress() {
 
         if (!val) return;
 
+        // 2. Find the selected region object
         const region = regions.value.find((r) => r.name === val);
         if (!region) return;
 
-        if (isNcr.value) {
+        // 3. Check for NCR specifically
+        const isActuallyNcr =
+            region.code === "130000000" || region.name.includes("NCR");
+
+        if (isActuallyNcr) {
+            // Auto-select N/A and fetch cities directly for NCR
+            selectedProvince.value = "N/A";
             await fetchCities(region.code, true);
         } else {
+            // Just fetch provinces, let the user pick one (no jump)
             await fetchProvinces(region.code);
         }
     });
 
     watch(selectedProvince, async (val) => {
-        if (isNcr.value || !val) return;
+        if (isNcr.value && val === "N/A") return;
+        if (!val) return;
 
         selectedCity.value = "";
         selectedBarangay.value = "";
@@ -115,10 +125,8 @@ export function useAddress() {
 
     watch(selectedCity, async (val) => {
         if (!val) return;
-
         selectedBarangay.value = "";
         barangays.value = [];
-
         const city = cities.value.find((c) => c.name === val);
         if (city) await fetchBarangays(city.code);
     });

@@ -49,7 +49,7 @@ const registerTeam = () => {
         <link rel="icon" type="image/png" :href="logoIcon" />
     </Head>
     <div
-        class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
+        class="bg-[url('@/assets/bg.jpg')] bg-cover bg-fixed bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
     >
         <div class="mx-auto w-full max-w-[1320px] px-5">
             <div class="flex flex-col md:flex-row justify-end">
@@ -64,7 +64,7 @@ const registerTeam = () => {
                     />
                 </div>
             </div>
-            <div class="text-[#DCDBE0] flex gap-5 mt-7 text-lg">
+            <div class="text-[#DCDBE0] flex gap-5 mt-7 sm:text-lg text-md">
                 <a href="/register">BACK</a>
             </div>
         </div>
@@ -120,7 +120,7 @@ const registerTeam = () => {
                         you will need to choose a different one before
                         submitting.
                     </p>
-                    <div class="sm:flex grid items-center gap-4 relative">
+                    <div class="sm:flex grid items-center gap-4 pb-1 relative">
                         <h1
                             class="font-gaming text-white mx-auto sm:text-3xl text-2xl"
                         >
@@ -245,11 +245,13 @@ const registerTeam = () => {
                                 :key="index"
                             >
                                 <div
-                                    class="md:col-span-2 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-2 md:col-span-4 col-span-12"
                                 >
                                     <label class="text-white"
-                                        >(Player {{ index + 1 }}) Full
-                                        Name</label
+                                        ><span class="font-bold"
+                                            >(Player {{ index + 1 }})</span
+                                        >
+                                        Full Name</label
                                     >
                                     <input
                                         type="text"
@@ -259,7 +261,7 @@ const registerTeam = () => {
                                     />
                                 </div>
                                 <div
-                                    class="md:col-span-2 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-2 md:col-span-4 col-span-12"
                                 >
                                     <label class="text-white"
                                         >(IGN) In-Game Name</label
@@ -272,7 +274,7 @@ const registerTeam = () => {
                                     />
                                 </div>
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-4 col-span-12"
                                 >
                                     <label class="text-white">E-mail</label>
                                     <input
@@ -283,7 +285,7 @@ const registerTeam = () => {
                                     />
                                 </div>
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white"
                                         >Mobile Number</label
@@ -296,7 +298,7 @@ const registerTeam = () => {
                                     />
                                 </div>
                                 <div
-                                    class="md:col-span-2 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-2 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white">Shirt Size</label>
                                     <select
@@ -324,9 +326,12 @@ const registerTeam = () => {
                         </h1>
                         <div class="grid grid-cols-12 gap-4">
                             <div
-                                class="md:col-span-2 sm:col-span-6 col-span-12"
+                                class="xl:col-span-2 md:col-span-4 col-span-12"
                             >
-                                <label class="text-white">Full Name</label>
+                                <label class="text-white"
+                                    ><span class="font-bold">(Reserve)</span>
+                                    Full Name</label
+                                >
                                 <input
                                     type="text"
                                     value="Pedro Dela Santos"
@@ -335,7 +340,7 @@ const registerTeam = () => {
                                 />
                             </div>
                             <div
-                                class="md:col-span-2 sm:col-span-6 col-span-12"
+                                class="xl:col-span-2 md:col-span-4 col-span-12"
                             >
                                 <label class="text-white"
                                     >(IGN) In-Game Name</label
@@ -348,7 +353,7 @@ const registerTeam = () => {
                                 />
                             </div>
                             <div
-                                class="md:col-span-3 sm:col-span-6 col-span-12"
+                                class="xl:col-span-3 md:col-span-4 col-span-12"
                             >
                                 <label class="text-white">E-mail</label>
                                 <input
@@ -358,7 +363,7 @@ const registerTeam = () => {
                                 />
                             </div>
                             <div
-                                class="md:col-span-3 sm:col-span-6 col-span-12"
+                                class="xl:col-span-3 md:col-span-6 col-span-12"
                             >
                                 <label class="text-white">Mobile Number</label>
                                 <input
@@ -369,7 +374,7 @@ const registerTeam = () => {
                                 />
                             </div>
                             <div
-                                class="md:col-span-2 sm:col-span-6 col-span-12"
+                                class="xl:col-span-2 md:col-span-6 col-span-12"
                             >
                                 <label class="text-white">Shirt Size</label>
                                 <select
@@ -394,10 +399,13 @@ const registerTeam = () => {
                                 :key="index"
                             >
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white"
-                                        >(Shirt {{ index + 1 }}) Name</label
+                                        ><span class="font-bold"
+                                            >(Shirt {{ index + 1 }})</span
+                                        >
+                                        Name</label
                                     >
                                     <input
                                         type="text"
@@ -407,7 +415,7 @@ const registerTeam = () => {
                                     />
                                 </div>
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white">E-mail</label>
                                     <input
@@ -418,7 +426,7 @@ const registerTeam = () => {
                                     />
                                 </div>
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white">Mobile</label>
                                     <input
@@ -429,7 +437,7 @@ const registerTeam = () => {
                                     />
                                 </div>
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white">Size</label>
                                     <select
@@ -591,6 +599,38 @@ const registerTeam = () => {
 
                     <div class="p-2 border-2 border-white mt-4">
                         <p class="text-sm text-center py-2 mb-1 text-white">
+                            After clicking the submit button, the system will
+                            start loading. Please take note:
+                            <strong
+                                >do not close the window or refresh the
+                                page</strong
+                            >
+                            because your email and phone number are still being
+                            processed for sending the email and SMS.
+                        </p>
+                        <img
+                            src="@/assets/loading.JPG"
+                            class="img-fluid rounded-2xl"
+                            alt="Registration Loading"
+                        />
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            Once you see the
+                            <strong>“Preparing Success Page”</strong>, it means
+                            your registration is almost complete and the system
+                            is finishing the sending process.
+                        </p>
+                        <img
+                            src="@/assets/loading_success.JPG"
+                            class="img-fluid rounded-2xl"
+                            alt="Registration Success"
+                        />
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
                             This is the final page confirming your registration
                             is successful! Please check your
                             <strong>Email</strong> (for the summary) and
@@ -598,8 +638,9 @@ const registerTeam = () => {
                             to confirm you have received your official
                             registration notice.
                         </p>
+
                         <img
-                            src="@/assets/method4.png"
+                            src="@/assets/success.jpeg"
                             class="img-fluid rounded-2xl"
                             alt="Registration Success"
                         />

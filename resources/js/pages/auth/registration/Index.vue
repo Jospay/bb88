@@ -20,6 +20,7 @@ const {
     selectedProvince,
     selectedCity,
     selectedBarangay,
+    isNcr,
 } = useAddress();
 
 const teamName = ref("");
@@ -40,11 +41,16 @@ const availShirtDetails = ref([]);
 
 const isSubmitting = ref(false);
 const isProcessingPayment = ref(false);
-const submitMessage = ref("");
 const submitError = ref(null);
 const validationErrors = ref({});
 
 const isSuccessfullySubmitted = ref(false);
+
+// Privacy Policy States
+const showPrivacy = ref(false);
+const canAgree = ref(false);
+const agreeChecked = ref(false);
+const policyBody = ref(null);
 
 const availShirts = computed(() =>
     Array.from({ length: additionalShirtCount.value }, (_, index) => {
@@ -66,6 +72,31 @@ const totalPayment = computed(
     () => BASE_REGISTRATION_FEE + additionalShirtCount.value * SHIRT_PRICE,
 );
 
+/**
+ * FIXED: Prevent refresh/exit lock
+ * We handle the window lock here.
+ */
+watch(
+    [isSubmitting, isProcessingPayment, isSuccessfullySubmitted],
+    ([submitting, processing, success]) => {
+        // If we have successfully submitted, kill the "Are you sure you want to leave"
+        // immediately so the redirect works without a popup.
+        if (success) {
+            window.onbeforeunload = null;
+            return;
+        }
+
+        if (submitting || processing) {
+            window.onbeforeunload = (e) => {
+                e.preventDefault();
+                return "Registration is in progress...";
+            };
+        } else {
+            window.onbeforeunload = null;
+        }
+    },
+);
+
 const loadFormState = () => {
     const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (storedData) {
@@ -82,7 +113,6 @@ const loadFormState = () => {
                 accountType: "Player",
                 size_shirt: "",
             }));
-
         if (data.reservePlayer) reservePlayer.value = data.reservePlayer;
         additionalShirtCount.value = data.additionalShirtCount || 0;
         availShirtDetails.value = data.availShirtDetails || [];
@@ -119,7 +149,7 @@ const saveFormState = () => {
             postalCode: postalCode.value,
             players: players.value,
             reservePlayer: reservePlayer.value,
-            additionalShirtCount: additionalShirtCount.value,
+            additional_shirt_count: additionalShirtCount.value,
             availShirtDetails: availShirtDetails.value,
         }),
     );
@@ -140,9 +170,11 @@ watch(
     { deep: true },
 );
 
-const allUsers = computed(() => {
-    return [...players.value, reservePlayer.value, ...availShirtDetails.value];
-});
+const allUsers = computed(() => [
+    ...players.value,
+    reservePlayer.value,
+    ...availShirtDetails.value,
+]);
 
 const duplicateEmails = computed(() => {
     const emails = allUsers.value.map((u) => u.email?.trim().toLowerCase());
@@ -164,22 +196,21 @@ const duplicateUsernames = computed(() => {
 });
 
 const handleInput = (fieldName) => {
-    if (validationErrors.value && validationErrors.value[fieldName]) {
+    if (validationErrors.value && validationErrors.value[fieldName])
         delete validationErrors.value[fieldName];
-    }
-    if (Object.keys(validationErrors.value).length === 0) {
+    if (Object.keys(validationErrors.value).length === 0)
         submitError.value = null;
-    }
 };
 
 const getError = (fieldName, value = null, type = null) => {
-    if (fieldName && validationErrors.value[fieldName]) {
+    if (fieldName && validationErrors.value[fieldName])
         return validationErrors.value[fieldName][0];
-    }
-    if (type === "email" && value) {
-        if (duplicateEmails.value.includes(value.trim().toLowerCase()))
-            return "Duplicate email detected";
-    }
+    if (
+        type === "email" &&
+        value &&
+        duplicateEmails.value.includes(value.trim().toLowerCase())
+    )
+        return "Duplicate email detected";
     if (type === "mobile" && value) {
         const valStr = String(value).trim();
         if (duplicateMobiles.value.includes(valStr))
@@ -187,19 +218,17 @@ const getError = (fieldName, value = null, type = null) => {
         if (valStr.length > 0 && valStr.length !== 10)
             return "Mobile number must be 10 digits";
     }
-    if (type === "username" && value && value.toLowerCase() !== "n/a") {
-        if (duplicateUsernames.value.includes(value.trim().toLowerCase()))
-            return "Duplicate IGN/Username detected";
-    }
-
-    if (type === "size_shirt") {
-        if (!value || value === "") {
-            // Only return the string if we have a backend error or manual trigger
-            return validationErrors.value[fieldName]
-                ? "Please select a shirt size"
-                : null;
-        }
-    }
+    if (
+        type === "username" &&
+        value &&
+        value.toLowerCase() !== "n/a" &&
+        duplicateUsernames.value.includes(value.trim().toLowerCase())
+    )
+        return "Duplicate IGN/Username detected";
+    if (type === "size_shirt" && (!value || value === ""))
+        return validationErrors.value[fieldName]
+            ? "Please select a shirt size"
+            : null;
     return null;
 };
 
@@ -215,48 +244,13 @@ const registerTeam = async () => {
     submitError.value = null;
     validationErrors.value = {};
 
-    const hasLocalErrors = allUsers.value.some((u) => {
-        return (
-            getError(null, u.email, "email") ||
-            getError(null, u.mobileNumber, "mobile") ||
-            getError(null, u.username, "username") ||
-            getError(null, u.size_shirt, "size_shirt")
-        );
-    });
-
-    if (hasLocalErrors) {
-        submitError.value =
-            "Please fix duplicate or formatting errors before submitting.";
-        await nextTick();
-        const firstError = document.querySelector(
-            ".ring-red-500, .text-red-500",
-        );
-        if (firstError)
-            firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!agreeChecked.value) {
+        submitError.value = "You must agree to the Privacy Policy to proceed.";
         return;
     }
 
-    const captainEmail = players.value[0]?.email;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!captainEmail || !emailRegex.test(captainEmail)) {
-        submitError.value =
-            "The Captain (Player 1) must provide a valid email address.";
-        return;
-    }
-
+    // Start Loading
     isSubmitting.value = true;
-
-    const finalDetails = [...players.value, reservePlayer.value];
-    const allDetailUsers = [...finalDetails, ...availShirtDetails.value].map(
-        (u) => ({
-            fullName: u.fullName,
-            username: u.accountType === "Shirt" ? null : u.username || "",
-            email: u.email,
-            mobileNumber: String(u.mobileNumber),
-            accountType: u.accountType,
-            size_shirt: u.size_shirt,
-        }),
-    );
 
     const payload = {
         team: {
@@ -270,42 +264,48 @@ const registerTeam = async () => {
             postal_code: postalCode.value,
             agree: agreeChecked.value,
         },
-        details: allDetailUsers,
+        details: [
+            ...players.value,
+            reservePlayer.value,
+            ...availShirtDetails.value,
+        ].map((u) => ({
+            fullName: u.fullName,
+            username: u.accountType === "Shirt" ? null : u.username || "",
+            email: u.email,
+            mobileNumber: String(u.mobileNumber),
+            accountType: u.accountType,
+            size_shirt: u.size_shirt,
+        })),
     };
 
     try {
         const response = await axios.post("/api/register", payload);
 
-        // UPDATED LOGIC: Check for the token returned by RegistrationController
         if (response.data.token) {
-            isSubmitting.value = false;
-            isProcessingPayment.value = true;
+            // 1. Mark success to unlock the "onbeforeunload" prompt
             isSuccessfullySubmitted.value = true;
+            window.onbeforeunload = null;
 
-            // Clear draft
+            // 2. Clear draft
             localStorage.removeItem(LOCAL_STORAGE_KEY);
 
-            // Manual redirect using the token
-            setTimeout(() => {
-                window.location.href = `/payment/success?token=${response.data.token}`;
-            }, 1200);
+            // NOTE: We do NOT set isSubmitting.value = false here.
+            // This keeps the loading screen visible until the browser
+            // actually leaves this page for the success URL.
+
+            window.location.replace(
+                `/payment/success?token=${response.data.token}`,
+            );
         }
     } catch (error) {
-        isProcessingPayment.value = false;
+        // If it fails, we STOP loading so the user can fix the form
         isSubmitting.value = false;
+        isProcessingPayment.value = false;
+
         if (error.response && error.response.status === 422) {
             validationErrors.value = error.response.data.errors;
             submitError.value =
                 "Validation failed. Please check the highlighted fields.";
-            await nextTick();
-            const firstError = document.querySelector(
-                ".ring-red-500, .text-red-500",
-            );
-            if (firstError)
-                firstError.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                });
         } else {
             submitError.value =
                 error.response?.data?.message || "An error occurred.";
@@ -313,26 +313,20 @@ const registerTeam = async () => {
     }
 };
 
-const showPrivacy = ref(false);
-const canAgree = ref(false);
-const agreeChecked = ref(false);
-const policyBody = ref(null);
-
 function openModal() {
     showPrivacy.value = true;
     canAgree.value = false;
 }
-
 function handleScroll() {
     const el = policyBody.value;
-    if (!el) return;
-    const bottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
-    if (bottom) canAgree.value = true;
+    if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 10)
+        canAgree.value = true;
 }
-
 function acceptPolicy() {
     agreeChecked.value = true;
     showPrivacy.value = false;
+    if (validationErrors.value["team.agree"])
+        delete validationErrors.value["team.agree"];
 }
 </script>
 
@@ -341,7 +335,7 @@ function acceptPolicy() {
         <link rel="icon" type="image/png" :href="logoIcon" />
     </Head>
     <div
-        class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
+        class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat bg-fixed min-h-screen w-full grid place-items-center"
     >
         <div class="mx-auto w-full max-w-[1500px]">
             <div
@@ -375,13 +369,13 @@ function acceptPolicy() {
                     <p class="text-white text-lg">In Cooperation with:</p>
                     <img
                         src="@/assets/landing-bb88-logo.png"
-                        class="sm:h-[50px] h-auto sm:w-auto w-full"
+                        class="sm:h-[46px] h-auto sm:w-auto w-full"
                         alt=""
                     />
                 </div>
             </div>
 
-            <div class="text-[#DCDBE0] flex gap-5 mt-7 px-5 text-lg">
+            <div class="text-[#DCDBE0] flex gap-5 mt-7 px-5 sm:text-lg text-md">
                 <a href="/">BACK</a>
                 <div>|</div>
                 <div>
@@ -526,19 +520,25 @@ function acceptPolicy() {
                             class="xl:col-span-2 md:col-span-4 sm:col-span-6 col-span-12"
                         >
                             <label class="text-white">Province</label>
+
                             <select
                                 v-model="selectedProvince"
                                 @change="handleInput('team.province')"
-                                :disabled="isNcr || !selectedRegion"
-                                class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2 ring-[#bf38a6] disabled:opacity-40"
+                                :disabled="!selectedRegion || isNcr"
+                                required
+                                class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2 ring-[#bf38a6] disabled:opacity-50"
                                 :class="{
                                     'ring-red-500': getError('team.province'),
                                 }"
                             >
-                                <option value="" disabled>
+                                <option v-if="!isNcr" value="" disabled>
                                     Select Province
                                 </option>
+
+                                <option v-if="isNcr" value="N/A">N/A</option>
+
                                 <option
+                                    v-else
                                     v-for="p in provinces"
                                     :key="p.code"
                                     :value="p.name"
@@ -546,6 +546,7 @@ function acceptPolicy() {
                                     {{ p.name }}
                                 </option>
                             </select>
+
                             <p
                                 v-if="getError('team.province')"
                                 class="text-red-500 text-xs pt-1"
@@ -652,10 +653,13 @@ function acceptPolicy() {
                     <div class="grid grid-cols-12 gap-4">
                         <template v-for="(p, index) in players" :key="index">
                             <div
-                                class="md:col-span-2 sm:col-span-6 col-span-12"
+                                class="xl:col-span-2 md:col-span-4 col-span-12"
                             >
                                 <label class="text-white"
-                                    >(Player {{ index + 1 }}) Full Name</label
+                                    ><span class="font-bold"
+                                        >(Player {{ index + 1 }})</span
+                                    >
+                                    Full Name</label
                                 >
                                 <input
                                     type="text"
@@ -693,7 +697,7 @@ function acceptPolicy() {
                             </div>
 
                             <div
-                                class="md:col-span-2 sm:col-span-6 col-span-12"
+                                class="xl:col-span-2 md:col-span-4 col-span-12"
                             >
                                 <label class="text-white"
                                     >(IGN) In-Game Name</label
@@ -737,7 +741,7 @@ function acceptPolicy() {
                             </div>
 
                             <div
-                                class="md:col-span-3 sm:col-span-6 col-span-12"
+                                class="xl:col-span-3 md:col-span-4 col-span-12"
                             >
                                 <label class="text-white">E-mail</label>
                                 <input
@@ -779,7 +783,7 @@ function acceptPolicy() {
                             </div>
 
                             <div
-                                class="md:col-span-3 sm:col-span-6 col-span-12"
+                                class="xl:col-span-3 md:col-span-6 col-span-12"
                             >
                                 <label class="text-white">Mobile Number</label>
                                 <input
@@ -823,7 +827,7 @@ function acceptPolicy() {
                             </div>
 
                             <div
-                                class="md:col-span-2 sm:col-span-6 col-span-12"
+                                class="xl:col-span-2 md:col-span-6 col-span-12"
                             >
                                 <label class="text-white">Shirt Size</label>
                                 <select
@@ -878,8 +882,11 @@ function acceptPolicy() {
                     </h1>
 
                     <div class="grid grid-cols-12 gap-4">
-                        <div class="md:col-span-2 sm:col-span-6 col-span-12">
-                            <label class="text-white">Full Name</label>
+                        <div class="xl:col-span-2 md:col-span-4 col-span-12">
+                            <label class="text-white"
+                                ><span class="font-bold">(Reserve)</span> Full
+                                Name</label
+                            >
                             <input
                                 type="text"
                                 v-model="reservePlayer.fullName"
@@ -901,7 +908,7 @@ function acceptPolicy() {
                             </p>
                         </div>
 
-                        <div class="md:col-span-2 sm:col-span-6 col-span-12">
+                        <div class="xl:col-span-2 md:col-span-4 col-span-12">
                             <label class="text-white">In-Game Name</label>
                             <input
                                 type="text"
@@ -943,7 +950,7 @@ function acceptPolicy() {
                             </p>
                         </div>
 
-                        <div class="md:col-span-3 sm:col-span-6 col-span-12">
+                        <div class="xl:col-span-3 md:col-span-4 col-span-12">
                             <label class="text-white">E-mail</label>
                             <input
                                 type="email"
@@ -973,7 +980,7 @@ function acceptPolicy() {
                             </p>
                         </div>
 
-                        <div class="md:col-span-3 sm:col-span-6 col-span-12">
+                        <div class="xl:col-span-3 md:col-span-6 col-span-12">
                             <label class="text-white">Mobile Number</label>
                             <input
                                 type="number"
@@ -1015,7 +1022,7 @@ function acceptPolicy() {
                             </p>
                         </div>
 
-                        <div class="md:col-span-2 sm:col-span-6 col-span-12">
+                        <div class="xl:col-span-2 md:col-span-6 col-span-12">
                             <label class="text-white">Shirt Size</label>
                             <select
                                 v-model="reservePlayer.size_shirt"
@@ -1072,11 +1079,13 @@ function acceptPolicy() {
                                 :key="index"
                             >
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white"
-                                        >(Shirt {{ index + 1 }}) Full
-                                        Name</label
+                                        ><span class="font-bold"
+                                            >(Shirt {{ index + 1 }})</span
+                                        >
+                                        Full Name</label
                                     >
                                     <input
                                         type="text"
@@ -1086,17 +1095,13 @@ function acceptPolicy() {
                                         required
                                         @input="
                                             handleInput(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.fullName`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.fullName`,
                                             )
                                         "
                                         class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
                                         :class="{
                                             'ring-red-500': getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.fullName`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.fullName`,
                                                 s.fullName,
                                             ),
                                         }"
@@ -1105,9 +1110,7 @@ function acceptPolicy() {
                                     <p
                                         v-if="
                                             getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.fullName`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.fullName`,
                                                 s.fullName,
                                             )
                                         "
@@ -1115,9 +1118,7 @@ function acceptPolicy() {
                                     >
                                         {{
                                             getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.fullName`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.fullName`,
                                                 s.fullName,
                                             )
                                         }}
@@ -1125,7 +1126,7 @@ function acceptPolicy() {
                                 </div>
 
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white">E-mail</label>
                                     <input
@@ -1136,17 +1137,13 @@ function acceptPolicy() {
                                         required
                                         @input="
                                             handleInput(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.email`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.email`,
                                             )
                                         "
                                         class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
                                         :class="{
                                             'ring-red-500': getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.email`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.email`,
                                                 s.email,
                                                 'email',
                                             ),
@@ -1155,9 +1152,7 @@ function acceptPolicy() {
                                     <p
                                         v-if="
                                             getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.email`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.email`,
                                                 s.email,
                                                 'email',
                                             )
@@ -1166,9 +1161,7 @@ function acceptPolicy() {
                                     >
                                         {{
                                             getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.email`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.email`,
                                                 s.email,
                                                 "email",
                                             )
@@ -1177,7 +1170,7 @@ function acceptPolicy() {
                                 </div>
 
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white"
                                         >Mobile Number</label
@@ -1190,17 +1183,13 @@ function acceptPolicy() {
                                         required
                                         @input="
                                             handleInput(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.mobileNumber`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.mobileNumber`,
                                             )
                                         "
                                         class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2 ring-[#bf38a6]"
                                         :class="{
                                             'ring-red-500': getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.mobileNumber`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.mobileNumber`,
                                                 s.mobileNumber,
                                                 'mobile',
                                             ),
@@ -1209,9 +1198,7 @@ function acceptPolicy() {
                                     <p
                                         v-if="
                                             getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.mobileNumber`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.mobileNumber`,
                                                 s.mobileNumber,
                                                 'mobile',
                                             )
@@ -1220,9 +1207,7 @@ function acceptPolicy() {
                                     >
                                         {{
                                             getError(
-                                                `details.${
-                                                    INITIAL_PLAYER_COUNT + index
-                                                }.mobileNumber`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.mobileNumber`,
                                                 s.mobileNumber,
                                                 "mobile",
                                             )
@@ -1231,7 +1216,7 @@ function acceptPolicy() {
                                 </div>
 
                                 <div
-                                    class="md:col-span-3 sm:col-span-6 col-span-12"
+                                    class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
                                     <label class="text-white">Shirt Size</label>
                                     <select
@@ -1241,13 +1226,13 @@ function acceptPolicy() {
                                         required
                                         @change="
                                             handleInput(
-                                                `details.${INITIAL_PLAYER_COUNT + index}.size_shirt`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.size_shirt`,
                                             )
                                         "
                                         class="bg-[rgba(0,0,0,0.7)] text-white w-full px-2 py-[11px] mt-1 rounded-md outline-none ring-2"
                                         :class="
                                             getError(
-                                                `details.${INITIAL_PLAYER_COUNT + index}.size_shirt`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.size_shirt`,
                                                 availShirtDetails[index]
                                                     .size_shirt,
                                                 'size_shirt',
@@ -1267,7 +1252,7 @@ function acceptPolicy() {
                                     <p
                                         v-if="
                                             getError(
-                                                `details.${INITIAL_PLAYER_COUNT + index}.size_shirt`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.size_shirt`,
                                                 availShirtDetails[index]
                                                     .size_shirt,
                                                 'size_shirt',
@@ -1277,7 +1262,7 @@ function acceptPolicy() {
                                     >
                                         {{
                                             getError(
-                                                `details.${INITIAL_PLAYER_COUNT + index}.size_shirt`,
+                                                `details.${INITIAL_PLAYER_COUNT + 1 + index}.size_shirt`,
                                                 availShirtDetails[index]
                                                     .size_shirt,
                                                 "size_shirt",
