@@ -615,7 +615,7 @@ const registerTeam = () => {
                         />
                     </div>
 
-                    <div class="p-2 border-2 border-white mt-4">
+                    <!-- <div class="p-2 border-2 border-white mt-4">
                         <p class="text-sm text-center py-2 mb-1 text-white">
                             Once you see the
                             <strong>“Preparing Success Page”</strong>, it means
@@ -627,7 +627,7 @@ const registerTeam = () => {
                             class="img-fluid rounded-2xl"
                             alt="Registration Success"
                         />
-                    </div>
+                    </div> -->
 
                     <div class="p-2 border-2 border-white mt-4">
                         <p class="text-sm text-center py-2 mb-1 text-white">
