@@ -1,138 +1,138 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+// import { ref, onMounted, onBeforeUnmount } from "vue";
 
-// --- IMPORT VIDEO AND POSTER ASSETS ---
-// Import video (.mp4)
-import teaser1_video from "@/assets/video/2026 teaser 1.mp4";
-import teaser2_video from "@/assets/video/2026 teaser 2.mp4";
-import newTeaser1_video from "@/assets/video/2026 new teaser 1.mp4";
-import newTeaser2_video from "@/assets/video/2026 new teaser 2.mp4";
-import newTeaser3_video from "@/assets/video/2026 new teaser 3.mp4";
-import avp1_video from "@/assets/video/2026 avp 1.mp4";
-import avp2_video from "@/assets/video/2026 avp 2.mp4";
+// // --- IMPORT VIDEO AND POSTER ASSETS ---
+// // Import video (.mp4)
+// import teaser1_video from "@/assets/video/2026 teaser 1.mp4";
+// import teaser2_video from "@/assets/video/2026 teaser 2.mp4";
+// import newTeaser1_video from "@/assets/video/2026 new teaser 1.mp4";
+// import newTeaser2_video from "@/assets/video/2026 new teaser 2.mp4";
+// import newTeaser3_video from "@/assets/video/2026 new teaser 3.mp4";
+// import avp1_video from "@/assets/video/2026 avp 1.mp4";
+// import avp2_video from "@/assets/video/2026 avp 2.mp4";
 
-// Import (.jpg)
-import teaser1_poster from "@/assets/thumbnail/2026 teaser 1.jpg";
-import teaser2_poster from "@/assets/thumbnail/2026 teaser 2.jpg";
-import newTeaser1_poster from "@/assets/thumbnail/2026 new teaser 1.jpg";
-import newTeaser2_poster from "@/assets/thumbnail/2026 new teaser 2.jpg";
-import newTeaser3_poster from "@/assets/thumbnail/2026 new teaser 3.jpg";
-import avp1_poster from "@/assets/thumbnail/2026 avp 1.jpg";
-import avp2_poster from "@/assets/thumbnail/2026 avp 2.jpg";
+// // Import (.jpg)
+// import teaser1_poster from "@/assets/thumbnail/2026 teaser 1.jpg";
+// import teaser2_poster from "@/assets/thumbnail/2026 teaser 2.jpg";
+// import newTeaser1_poster from "@/assets/thumbnail/2026 new teaser 1.jpg";
+// import newTeaser2_poster from "@/assets/thumbnail/2026 new teaser 2.jpg";
+// import newTeaser3_poster from "@/assets/thumbnail/2026 new teaser 3.jpg";
+// import avp1_poster from "@/assets/thumbnail/2026 avp 1.jpg";
+// import avp2_poster from "@/assets/thumbnail/2026 avp 2.jpg";
 
-let owl2 = null;
+// let owl2 = null;
 
-// Video list now contains objects linking video source and poster image
-const videos = ref([
-    { video: teaser1_video, poster: teaser1_poster },
-    { video: teaser2_video, poster: teaser2_poster },
-    { video: newTeaser1_video, poster: newTeaser1_poster },
-    { video: newTeaser2_video, poster: newTeaser2_poster },
-    { video: newTeaser3_video, poster: newTeaser3_poster },
-    { video: avp1_video, poster: avp1_poster },
-    { video: avp2_video, poster: avp2_poster },
-]);
+// // Video list now contains objects linking video source and poster image
+// const videos = ref([
+//     { video: teaser1_video, poster: teaser1_poster },
+//     { video: teaser2_video, poster: teaser2_poster },
+//     { video: newTeaser1_video, poster: newTeaser1_poster },
+//     { video: newTeaser2_video, poster: newTeaser2_poster },
+//     { video: newTeaser3_video, poster: newTeaser3_poster },
+//     { video: avp1_video, poster: avp1_poster },
+//     { video: avp2_video, poster: avp2_poster },
+// ]);
 
-// Track the active video index
-const activeIndex = ref(0);
+// // Track the active video index
+// const activeIndex = ref(0);
 
-// --- Function to sync right column height with left carousel ---
-const syncRightHeight = () => {
-    const leftDiv = document.querySelector(".owl-2");
-    const rightDiv = document.querySelector(".right-thumbs-container");
-    if (leftDiv && rightDiv) {
-        rightDiv.style.height = `${leftDiv.offsetHeight}px`;
-    }
-};
+// // --- Function to sync right column height with left carousel ---
+// const syncRightHeight = () => {
+//     const leftDiv = document.querySelector(".owl-2");
+//     const rightDiv = document.querySelector(".right-thumbs-container");
+//     if (leftDiv && rightDiv) {
+//         rightDiv.style.height = `${leftDiv.offsetHeight}px`;
+//     }
+// };
 
-onMounted(() => {
-    if (!window.$) {
-        console.error("jQuery not loaded");
-        return;
-    }
+// onMounted(() => {
+//     if (!window.$) {
+//         console.error("jQuery not loaded");
+//         return;
+//     }
 
-    const $carousel = $(".owl-2");
+//     const $carousel = $(".owl-2");
 
-    // Initialize Owl Carousel
-    owl2 = $carousel.owlCarousel({
-        items: 1,
-        loop: true,
-        margin: 20,
-        smartSpeed: 800,
-        nav: false,
-        dots: false,
-        autoplay: false,
-        stagePadding: 0,
-    });
+//     // Initialize Owl Carousel
+//     owl2 = $carousel.owlCarousel({
+//         items: 1,
+//         loop: true,
+//         margin: 20,
+//         smartSpeed: 800,
+//         nav: false,
+//         dots: false,
+//         autoplay: false,
+//         stagePadding: 0,
+//     });
 
-    // Custom arrows
-    $(".bg-left-half123").on("click", () => owl2.trigger("prev.owl.carousel"));
-    $(".bg-right-half").on("click", () => owl2.trigger("next.owl.carousel"));
+//     // Custom arrows
+//     $(".bg-left-half123").on("click", () => owl2.trigger("prev.owl.carousel"));
+//     $(".bg-right-half").on("click", () => owl2.trigger("next.owl.carousel"));
 
-    // Update activeIndex on carousel change
-    $carousel.on("changed.owl.carousel", (e) => {
-        // Correctly calculate the non-cloned item index (standard for Owl Carousel with loop)
-        activeIndex.value = e.item.index - 2 < 0 ? 0 : e.item.index - 2;
-        if (activeIndex.value >= videos.value.length) {
-            activeIndex.value = activeIndex.value % videos.value.length;
-        }
+//     // Update activeIndex on carousel change
+//     $carousel.on("changed.owl.carousel", (e) => {
+//         // Correctly calculate the non-cloned item index (standard for Owl Carousel with loop)
+//         activeIndex.value = e.item.index - 2 < 0 ? 0 : e.item.index - 2;
+//         if (activeIndex.value >= videos.value.length) {
+//             activeIndex.value = activeIndex.value % videos.value.length;
+//         }
 
-        // Pause all videos
-        $("video.video-main").each(function () {
-            this.pause();
-        });
+//         // Pause all videos
+//         $("video.video-main").each(function () {
+//             this.pause();
+//         });
 
-        // Play main video
-        setTimeout(() => {
-            // Find the video in the active Owl item
-            const mainVideo = $(".owl-item.active").find(".video-main")[0];
-            if (mainVideo) {
-                // Ensure the main video is unmuted and can play (if controls are shown)
-                mainVideo.muted = false;
-                mainVideo.play();
-            }
-            syncRightHeight();
-        }, 200);
-    });
+//         // Play main video
+//         setTimeout(() => {
+//             // Find the video in the active Owl item
+//             const mainVideo = $(".owl-item.active").find(".video-main")[0];
+//             if (mainVideo) {
+//                 // Ensure the main video is unmuted and can play (if controls are shown)
+//                 mainVideo.muted = false;
+//                 mainVideo.play();
+//             }
+//             syncRightHeight();
+//         }, 200);
+//     });
 
-    // Auto-next when main video ends
-    $(document).on("ended", ".owl-item.active .video-main", () => {
-        owl2.trigger("next.owl.carousel");
-    });
+//     // Auto-next when main video ends
+//     $(document).on("ended", ".owl-item.active .video-main", () => {
+//         owl2.trigger("next.owl.carousel");
+//     });
 
-    // Play first video and sync height on load
-    setTimeout(() => {
-        const firstVideo = $(".owl-item.active").find(".video-main")[0];
-        if (firstVideo) {
-            firstVideo.muted = false; // Unmute first video on play
-            firstVideo.play();
-        }
-        syncRightHeight();
-    }, 300);
+//     // Play first video and sync height on load
+//     setTimeout(() => {
+//         const firstVideo = $(".owl-item.active").find(".video-main")[0];
+//         if (firstVideo) {
+//             firstVideo.muted = false; // Unmute first video on play
+//             firstVideo.play();
+//         }
+//         syncRightHeight();
+//     }, 300);
 
-    // Adjust right height on window resize
-    window.addEventListener("resize", syncRightHeight);
-});
+//     // Adjust right height on window resize
+//     window.addEventListener("resize", syncRightHeight);
+// });
 
-// Click thumbnail to change main video
-function selectVideo(index) {
-    activeIndex.value = index;
-    // Calculate the Owl Carousel index (index + 2 for standard loop: true)
-    const owlIndex = index + 2;
-    owl2.trigger("to.owl.carousel", [owlIndex, 300]);
-    setTimeout(() => syncRightHeight(), 350); // adjust after change
-}
+// // Click thumbnail to change main video
+// function selectVideo(index) {
+//     activeIndex.value = index;
+//     // Calculate the Owl Carousel index (index + 2 for standard loop: true)
+//     const owlIndex = index + 2;
+//     owl2.trigger("to.owl.carousel", [owlIndex, 300]);
+//     setTimeout(() => syncRightHeight(), 350); // adjust after change
+// }
 
-onBeforeUnmount(() => {
-    $(".bg-left-half123").off("click");
-    $(".bg-right-half").off("click");
-    $(document).off("ended", ".owl-item.active .video-main");
-    window.removeEventListener("resize", syncRightHeight);
-});
+// onBeforeUnmount(() => {
+//     $(".bg-left-half123").off("click");
+//     $(".bg-right-half").off("click");
+//     $(document).off("ended", ".owl-item.active .video-main");
+//     window.removeEventListener("resize", syncRightHeight);
+// });
 </script>
 
 <template>
-    <div
+    <!-- <div
         id="events"
         class="bg-[url('@/assets/nbg5.jpg')] bg-cover bg-no-repeat py-10 scroll-mt-22"
     >
@@ -239,13 +239,13 @@ onBeforeUnmount(() => {
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 </template>
 
 <style scoped>
-.gradient-border-image {
-    border: 4px solid transparent; /* Required for border-image to work */
+/* .gradient-border-image {
+    border: 4px solid transparent;
     -webkit-border-image: linear-gradient(to right, #3b82f6, #ef4444) 1;
     border-image: linear-gradient(to right, #3b82f6, #ef4444) 1;
-}
+} */
 </style>
