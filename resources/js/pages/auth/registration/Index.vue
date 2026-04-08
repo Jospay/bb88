@@ -376,7 +376,7 @@ function acceptPolicy() {
             </div>
 
             <div class="text-[#DCDBE0] flex gap-5 mt-7 px-5 sm:text-lg text-md">
-                <a href="/">BACK</a>
+                <a href="/">HOME</a>
                 <div>|</div>
                 <div>
                     REGISTRATION STEP-BY-STEP
@@ -460,12 +460,19 @@ function acceptPolicy() {
                 </div>
 
                 <div class="relative z-10">
-                    <h1
-                        class="font-gaming text-white sm:text-3xl text-2xl text-center py-5"
-                    >
-                        <i>ADDRESS</i>
-                    </h1>
+                    <div class="py-5 text-center">
+                        <h1 class="font-gaming text-white sm:text-3xl text-2xl">
+                            <i>ADDRESS</i>
+                        </h1>
 
+                        <p class="text-[#d8d4d4] text-sm">
+                            Please provide the complete address you want to
+                            represent
+                        </p>
+                    </div>
+                    <div
+                        class="w-full bg-slate-100 opacity-50 h-px mt-5 mb-4"
+                    ></div>
                     <div class="grid grid-cols-12 gap-4">
                         <div
                             class="xl:col-span-2 md:col-span-4 sm:col-span-6 col-span-12"
@@ -643,15 +650,26 @@ function acceptPolicy() {
                             </p>
                         </div>
                     </div>
+                    <div
+                        class="w-full bg-slate-100 opacity-50 h-px mt-5 mb-4"
+                    ></div>
 
-                    <h1
-                        class="font-gaming text-white sm:text-3xl text-2xl text-center py-5"
-                    >
-                        <i>TEAM MEMBER'S</i>
-                    </h1>
+                    <div class="py-5 text-center">
+                        <h1 class="font-gaming text-white sm:text-3xl text-2xl">
+                            <i>TEAM MEMBER'S</i>
+                        </h1>
 
-                    <div class="grid grid-cols-12 gap-4">
-                        <template v-for="(p, index) in players" :key="index">
+                        <p class="text-[#d8d4d4] text-sm">
+                            Make sure every member's details are correct, as
+                            they cannot be edited once submitted.
+                        </p>
+                    </div>
+
+                    <template v-for="(p, index) in players" :key="index">
+                        <div
+                            class="w-full bg-slate-100 opacity-50 h-px mt-5 mb-4"
+                        ></div>
+                        <div class="grid grid-cols-12 gap-4">
                             <div
                                 class="xl:col-span-2 md:col-span-4 col-span-12"
                             >
@@ -790,7 +808,7 @@ function acceptPolicy() {
                                     type="number"
                                     v-model="p.mobileNumber"
                                     :name="'playerNumber' + index"
-                                    placeholder="Mobile Number"
+                                    placeholder="9123123123"
                                     required
                                     @input="
                                         handleInput(
@@ -872,15 +890,26 @@ function acceptPolicy() {
                                     }}
                                 </p>
                             </div>
-                        </template>
+                        </div>
+                    </template>
+                    <div
+                        class="w-full bg-slate-100 opacity-50 h-px mt-5 mb-4"
+                    ></div>
+
+                    <div class="py-5 text-center">
+                        <h1 class="font-gaming text-white sm:text-3xl text-2xl">
+                            <i>RESERVE PLAYER</i>
+                        </h1>
+
+                        <p class="text-[#d8d4d4] text-sm">
+                            Make sure the reserve player details are correct, as
+                            they cannot be edited once submitted.
+                        </p>
                     </div>
 
-                    <h1
-                        class="font-gaming text-white sm:text-3xl text-2xl text-center py-5"
-                    >
-                        <i>Reserve Player</i>
-                    </h1>
-
+                    <div
+                        class="w-full bg-slate-100 opacity-50 h-px mt-5 mb-4"
+                    ></div>
                     <div class="grid grid-cols-12 gap-4">
                         <div class="xl:col-span-2 md:col-span-4 col-span-12">
                             <label class="text-white"
@@ -986,7 +1015,7 @@ function acceptPolicy() {
                                 type="number"
                                 v-model="reservePlayer.mobileNumber"
                                 required
-                                placeholder="Mobile Number"
+                                placeholder="9123123123"
                                 @input="handleInput('details.5.mobileNumber')"
                                 class="bg-[rgba(0,0,0,0.7)] text-white w-full p-2 mt-1 rounded-md outline-none ring-2"
                                 :class="
@@ -1065,19 +1094,32 @@ function acceptPolicy() {
                             </p>
                         </div>
                     </div>
+                    <div
+                        class="w-full bg-slate-100 opacity-50 h-px mt-5 mb-4"
+                    ></div>
 
                     <template v-if="additionalShirtCount > 0">
-                        <h1
-                            class="font-gaming text-white sm:text-3xl text-2xl text-center py-5"
-                        >
-                            <i>Availing Shirt Details</i>
-                        </h1>
-
-                        <div class="grid grid-cols-12 gap-4">
-                            <template
-                                v-for="(s, index) in availShirts"
-                                :key="index"
+                        <div class="py-5 text-center">
+                            <h1
+                                class="font-gaming text-white sm:text-3xl text-2xl"
                             >
+                                <i>AVAILING SHIRT DETAILS</i>
+                            </h1>
+
+                            <p class="text-[#d8d4d4] text-sm">
+                                Make sure the shirt details are correct, as they
+                                cannot be edited once submitted.
+                            </p>
+                        </div>
+
+                        <template
+                            v-for="(s, index) in availShirts"
+                            :key="index"
+                        >
+                            <div
+                                class="w-full bg-slate-100 opacity-50 h-px mt-5 mb-4"
+                            ></div>
+                            <div class="grid grid-cols-12 gap-4">
                                 <div
                                     class="xl:col-span-3 md:col-span-6 col-span-12"
                                 >
@@ -1179,7 +1221,7 @@ function acceptPolicy() {
                                         type="number"
                                         v-model="s.mobileNumber"
                                         :name="'availNumber' + index"
-                                        placeholder="Mobile Number"
+                                        placeholder="9123123123"
                                         required
                                         @input="
                                             handleInput(
@@ -1270,8 +1312,11 @@ function acceptPolicy() {
                                         }}
                                     </p>
                                 </div>
-                            </template>
-                        </div>
+                            </div>
+                        </template>
+                        <div
+                            class="w-full bg-slate-100 opacity-50 h-px mt-5 mb-4"
+                        ></div>
                     </template>
 
                     <!-- =============== PRIVACY CHECKBOX =============== -->
