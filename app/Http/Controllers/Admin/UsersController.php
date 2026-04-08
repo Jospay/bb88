@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\DetailUser;
+use App\Models\User;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 
 class UsersController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Use latest() to get the newest entries first
-        // latest() is a shorthand for orderBy('created_at', 'desc')
-        $users = DetailUser::with('user')
+        $users = User::with('detailUser')
             ->latest()
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
 
         return Inertia::render('dashboard/Users', [
             'users' => $users

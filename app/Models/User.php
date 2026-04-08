@@ -27,8 +27,7 @@ class User extends Model
     ];
 
     // Define the relationship to DetailUser
-    public function details()
-    {
-        return $this->hasMany(DetailUser::class);
-    }
+    public function detailUser() {
+    return $this->hasMany(DetailUser::class);
+}
 }
