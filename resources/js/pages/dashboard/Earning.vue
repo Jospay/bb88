@@ -22,7 +22,7 @@ const handleFilterChange = (event) => {
     router.get(
         "/admin/earning",
         { filter: event.target.value },
-        { preserveState: true, replace: true }
+        { preserveState: true, replace: true },
     );
 };
 
@@ -39,7 +39,7 @@ const columns = computed(() => {
                 h(
                     "span",
                     { class: "font-medium text-white" },
-                    row.original.date
+                    row.original.date,
                 ),
         },
         {
@@ -49,7 +49,7 @@ const columns = computed(() => {
                 h(
                     "span",
                     { class: "font-bold text-brand-blue" },
-                    `₱${parseFloat(row.original.total_amount).toLocaleString()}`
+                    `₱${parseFloat(row.original.total_amount).toLocaleString()}`,
                 ),
         },
     ];
@@ -63,8 +63,8 @@ const columns = computed(() => {
                     "span",
                     { class: "text-brand-gray" },
                     `₱${parseFloat(
-                        row.original[type.name] || 0
-                    ).toLocaleString()}`
+                        row.original[type.name] || 0,
+                    ).toLocaleString()}`,
                 ),
         });
     });
