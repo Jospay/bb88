@@ -337,7 +337,7 @@ const goToPage = (url) => {
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <template v-if="table.getRowModel().rows?.length > 0">
                             <TableRow
                                 v-for="row in table.getRowModel().rows"
                                 :key="row.id"
@@ -354,7 +354,16 @@ const goToPage = (url) => {
                                     />
                                 </TableCell>
                             </TableRow>
-                        </TableBody>
+                        </template>
+
+                        <TableRow v-else class="hover:bg-transparent">
+                            <TableCell
+                                :colspan="columns.length"
+                                class="p-10 text-center hover:bg-[#030C21] text-brand-gray italic"
+                            >
+                                No teams found.
+                            </TableCell>
+                        </TableRow>
                     </Table>
                 </div>
 

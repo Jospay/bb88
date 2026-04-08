@@ -159,7 +159,7 @@ const table = useVueTable({
             class="bg-brand-dark-black rounded-2xl p-6 border border-brand-border-black shadow-2xl"
         >
             <div
-                class="rounded-xl border border-brand-border-black overflow-x-auto bg-brand-light-black/20"
+                class="rounded-xl border border-brand-border-black overflow-hidden bg-brand-dark-black"
             >
                 <Table>
                     <TableHeader class="bg-brand-light-black">
@@ -180,21 +180,33 @@ const table = useVueTable({
                             </TableHead>
                         </TableRow>
                     </TableHeader>
+
                     <TableBody>
-                        <TableRow
-                            v-for="row in table.getRowModel().rows"
-                            :key="row.id"
-                            class="border-b border-brand-border-black hover:bg-brand-blue/5 transition-colors"
-                        >
-                            <TableCell
-                                v-for="cell in row.getVisibleCells()"
-                                :key="cell.id"
-                                class="p-4"
+                        <template v-if="table.getRowModel().rows?.length > 0">
+                            <TableRow
+                                v-for="row in table.getRowModel().rows"
+                                :key="row.id"
+                                class="border-b border-brand-border-black hover:bg-brand-blue/5 transition-colors"
                             >
-                                <FlexRender
-                                    :render="cell.column.columnDef.cell"
-                                    :props="cell.getContext()"
-                                />
+                                <TableCell
+                                    v-for="cell in row.getVisibleCells()"
+                                    :key="cell.id"
+                                    class="p-4"
+                                >
+                                    <FlexRender
+                                        :render="cell.column.columnDef.cell"
+                                        :props="cell.getContext()"
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        </template>
+
+                        <TableRow v-else class="hover:bg-transparent">
+                            <TableCell
+                                :colspan="table.getAllColumns().length"
+                                class="p-10 text-center hover:bg-[#030C21] text-brand-gray italic"
+                            >
+                                No earnings data recorded yet.
                             </TableCell>
                         </TableRow>
                     </TableBody>
