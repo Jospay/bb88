@@ -41,11 +41,9 @@ onMounted(() => {
     <div
         class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
     >
-        <div class="relative mx-auto w-full max-w-[1500px] sm:px-10 px-5">
+        <div class="relative mx-auto w-full max-w-[1500px] sm:px-10 px-2">
             <div class="mx-auto w-full max-w-[1320px] pb-10">
-                <div class="flex flex-col md:flex-row justify-between">
-                    <div></div>
-
+                <div class="flex sm:justify-end justify-center">
                     <div
                         class="flex gap-5 flex-col sm:flex-row items-center justify-between"
                     >
@@ -57,20 +55,16 @@ onMounted(() => {
                         />
                     </div>
                 </div>
-
-                <div class="text-[#DCDBE0] flex gap-5 mt-5 text-lg">
-                    <a href="/">RETURN HOME</a>
-                </div>
             </div>
 
             <div
-                class="p-2 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-pink mx-auto w-full max-w-[720px]"
+                class="sm:p-2 p-1 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-pink mx-auto w-full max-w-[720px]"
             >
                 <div
-                    class="bg-[url('@/assets/success_box.jpg')] bg-cover bg-center sm:p-5 p-3 bg-no-repeat w-full h-fit rounded-xl"
+                    class="bg-[url('@/assets/success_box.jpg')] bg-cover bg-center sm:p-5 bg-no-repeat w-full h-fit rounded-xl"
                 >
                     <h1
-                        class="font-gaming text-white text-center text-4xl whitespace-nowrap pt-22 pb-2"
+                        class="font-gaming text-white text-center sm:text-4xl text-3xl pt-22 pb-2"
                     >
                         <i> {{ props.teamName.toUpperCase() }} </i>
                     </h1>
@@ -81,9 +75,7 @@ onMounted(() => {
                         <i> THANK YOU FOR YOUR SUCCESSFUL REGISTRATION </i>
                     </h1>
 
-                    <p
-                        class="text-white text-center text-lg px-4 pb-10 uppercase"
-                    >
+                    <p class="text-white text-center text-lg px-4 uppercase">
                         TOTAL PAYMENT TO BE PAID IS ₱{{
                             Number(props.totalPayment).toLocaleString(
                                 undefined,
@@ -98,6 +90,16 @@ onMounted(() => {
                         A SEPARATE EMAIL WILL BE SENT WITH INSTRUCTIONS FOR THE
                         FULL TEAM PAYMENT.
                     </p>
+
+                    <div
+                        class="text-[#DCDBE0] flex justify-center text-lg py-10"
+                    >
+                        <a
+                            href="/"
+                            class="bg-gradient-to-r from-brand-blue to-brand-pink py-3 md:w-1/2 px-10 text-center rounded-2xl border-2 border-white font-bold"
+                            >RETURN HOME</a
+                        >
+                    </div>
                 </div>
             </div>
         </div>
