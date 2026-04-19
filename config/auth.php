@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Admin;
+use App\Models\User;
+
 return [
 
     /*
@@ -41,9 +44,16 @@ return [
             'provider' => 'users',
         ],
 
+        // Guard for the Admin Panel
         'admin' => [
             'driver' => 'session',
             'provider' => 'admins',
+        ],
+
+        // Guard for the Player Panel
+        'player' => [
+            'driver' => 'session',
+            'provider' => 'users',
         ],
     ],
 
@@ -67,12 +77,12 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => User::class,
         ],
 
         'admins' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Admin::class,
+            'model' => Admin::class,
         ],
     ],
 

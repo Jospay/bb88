@@ -1,9 +1,6 @@
 <?php
 
 // routes/web.php
-
-use App\Http\Controllers\RegistrationController;
-use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -27,3 +24,4 @@ Route::get('/', function () {
 
 require __DIR__ .'/auth.php';
 require __DIR__ .'/admin.php';
+require __DIR__ .'/player.php';

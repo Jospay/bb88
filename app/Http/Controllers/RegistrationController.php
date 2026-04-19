@@ -29,55 +29,6 @@ class RegistrationController extends Controller
 {
     const QR_CODE_PATH = 'qr_image/';
 
-    protected function sendMoviderSms(string $recipient, string $message): void
-    {
-        try {
-            $apiKey = "laPHOJ7nEDtXgMDplPgt5eZWCHxrv2";
-            $apiSecret = "bXNW6-H5BzdCpbgncRMj-MDJ_8sZ9L";
-            $senderId = "BB88";
-            $apiUrl = 'https://rest.movider.co/campaign'; // Campaign API
-
-            if (empty($apiKey) || empty($apiSecret)) {
-                Log::error('Movider API credentials are not set in the environment.');
-                return;
-            }
-
-            $cleanedRecipient = preg_replace('/[^0-9]/', '', $recipient);
-
-            if (strlen($cleanedRecipient) == 11 && substr($cleanedRecipient, 0, 1) === '0') {
-                $formattedRecipient = '63' . substr($cleanedRecipient, 1);
-            } elseif (strlen($cleanedRecipient) == 10 && substr($cleanedRecipient, 0, 1) === '9') {
-                $formattedRecipient = '63' . $cleanedRecipient;
-            } else {
-                $formattedRecipient = $cleanedRecipient;
-            }
-
-            $now = Carbon::now();
-            $campaignDate = $now->format('d M Y');
-            $campaignTime = $now->format('H:i:s');
-
-            $uniqueCampaignName = "{$campaignDate} | {$campaignTime} | BB88Reg";
-
-            $payload = [
-                'phoneNumbers' => ['phone' => [$formattedRecipient]],
-                'campaignName' => $uniqueCampaignName,
-                'senderName' => $senderId,
-                'message' => $message,
-            ];
-
-            $response = Http::withBasicAuth($apiKey, $apiSecret)
-                ->post($apiUrl, $payload);
-
-            if ($response->failed()) {
-                Log::error('Movider CAMPAIGN SMS failed to send to ' . $formattedRecipient . '. HTTP Status: ' . $response->status() . '. Response: ' . $response->body());
-            } else {
-                Log::info('Movider CAMPAIGN SMS sent successfully to ' . $formattedRecipient . '. Campaign ID: ' . ($response->json()['campaignID'] ?? 'N/A'));
-            }
-        } catch (\Exception $e) {
-            Log::error('Movider CAMPAIGN SMS Exception: ' . $e->getMessage());
-        }
-    }
-
     public function register(Request $request)
 {
     $teamData = $request->input('team');
@@ -216,25 +167,25 @@ class RegistrationController extends Controller
     {
         $allDetails = DetailUser::where('user_id', $user->id)->get();
         $currentDate = Carbon::now()->format('F d, Y');
-        $formattedAmount = number_format($user->total_payment, 2);
+        // $formattedAmount = number_format($user->total_payment, 2);
 
-        $sentNumbers = [];
-        foreach ($allDetails as $detail) {
-            if (in_array($detail->mobile_number, $sentNumbers)) continue;
+        // $sentNumbers = [];
+        // foreach ($allDetails as $detail) {
+        //     if (in_array($detail->mobile_number, $sentNumbers)) continue;
 
-            // Updated label to include the specific amount and "full team payment" phrasing
-            $label = "Total payment to be paid is ₱{$formattedAmount} after the team qualifies, a separate email will be sent with instructions for the full team payment.";
+        //     // Updated label to include the specific amount and "full team payment" phrasing
+        //     $label = "Total payment to be paid is ₱{$formattedAmount} after the team qualifies, a separate email will be sent with instructions for the full team payment.";
 
-            $actionText = match ($detail->account_type) {
-                'Player'  => "registered as a Player. {$label}",
-                'Shirt'   => "registered for an additional Shirt. {$label}",
-                'Reserve' => "registered as a Reserve Player. Please wait for the qualification email.",
-                default   => "registered"
-            };
+        //     $actionText = match ($detail->account_type) {
+        //         'Player'  => "registered as a Player. {$label}",
+        //         'Shirt'   => "registered for an additional Shirt. {$label}",
+        //         'Reserve' => "registered as a Reserve Player. Please wait for the qualification email.",
+        //         default   => "registered"
+        //     };
 
-            $this->sendMoviderSms($detail->mobile_number, "Congrats! Team {$user->team_name} is registered. You are {$actionText}");
-            $sentNumbers[] = $detail->mobile_number;
-        }
+        //     $this->sendMoviderSms($detail->mobile_number, "Congrats! Team {$user->team_name} is registered. You are {$actionText}");
+        //     $sentNumbers[] = $detail->mobile_number;
+        // }
 
         $htmlBody = $this->createConfirmationEmailBody(
             $user->team_name,

@@ -30,6 +30,7 @@ return new class extends Migration
             $table->integer('verification_account')->default(0);
             $table->enum('size_shirt', ['L', 'XL', 'XXL']);
             $table->enum('status', ['pending', 'claimed'])->default('pending');
+            $table->string('token')->nullable();
             $table->timestamps();
         });
     }

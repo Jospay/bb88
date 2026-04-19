@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class User extends Model
+class User extends Authenticatable
 {
-    use HasFactory;
+    use HasFactory, Notifiable;
 
     protected $table = 'users';
 
@@ -26,8 +27,13 @@ class User extends Model
         'transaction_status'
     ];
 
-    // Define the relationship to DetailUser
-    public function detailUser() {
-    return $this->hasMany(DetailUser::class);
-}
+    public function getAuthPassword()
+    {
+        return $this->detailUser->first()?->password;
+    }
+
+    public function detailUser()
+    {
+        return $this->hasMany(DetailUser::class, 'user_id');
+    }
 }

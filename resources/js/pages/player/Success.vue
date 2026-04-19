@@ -1,0 +1,111 @@
+<script setup>
+import { defineProps, onMounted } from "vue";
+import { Head, Link } from "@inertiajs/vue3";
+import logoIcon from "@/assets/logo.png";
+
+const LOCAL_STORAGE_KEY = "teamRegistrationDraft";
+
+const props = defineProps({
+    sessionId: {
+        type: String,
+        required: true,
+    },
+    teamName: {
+        type: String,
+        required: true,
+    },
+});
+
+onMounted(() => {
+    try {
+        if (localStorage.getItem(LOCAL_STORAGE_KEY)) {
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            console.log("Team registration draft cleared.");
+        }
+    } catch (e) {
+        console.error("Error clearing state from localStorage:", e);
+    }
+});
+</script>
+
+<template>
+    <Head>
+        <link rel="icon" type="image/png" :href="logoIcon" />
+        <title>Payment Successful | BB 88 Advertising</title>
+    </Head>
+
+    <div
+        class="bg-[url('@/assets/bg.jpg')] bg-cover bg-center py-12 bg-no-repeat min-h-screen w-full grid place-items-center"
+    >
+        <div class="relative mx-auto w-full max-w-[1500px] sm:px-10 px-2">
+            <div class="mx-auto w-full max-w-[1320px] pb-10">
+                <div class="flex sm:justify-end justify-center">
+                    <div
+                        class="flex gap-5 flex-col sm:flex-row items-center justify-between"
+                    >
+                        <p class="text-white text-lg">In Cooperation with:</p>
+                        <img
+                            src="@/assets/landing-bb88-logo.png"
+                            class="sm:h-[50px] sm:w-auto h-auto w-full"
+                            alt="BB88 Logo"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="sm:p-2 p-1 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-pink mx-auto w-full max-w-[720px]"
+            >
+                <div
+                    class="bg-[url('@/assets/success_box.jpg')] bg-cover bg-center sm:p-5 bg-no-repeat w-full h-fit rounded-xl"
+                >
+                    <h1
+                        class="font-gaming text-white text-center sm:text-4xl text-3xl pt-22 pb-2"
+                    >
+                        <i> {{ props.teamName.toUpperCase() }} </i>
+                    </h1>
+
+                    <h1
+                        class="font-gaming text-white text-center sm:text-4xl text-2xl pt-5 pb-2"
+                    >
+                        <i> PAYMENT SUCCESSFULLY VERIFIED </i>
+                    </h1>
+
+                    <p class="text-white text-center text-lg px-4 uppercase">
+                        YOUR TEAM IS NOW
+                        <span class="text-green-400 font-bold">FULLY PAID</span
+                        >.
+                        <br class="hidden sm:block" />
+                        A CONFIRMATION EMAIL HAS BEEN SENT TO ALL TEAM MEMBERS
+                        <br class="hidden sm:block" />
+                        WITH THEIR REGISTRATION DETAILS AND NEXT STEPS.
+                    </p>
+
+                    <div
+                        class="text-[#DCDBE0] flex justify-center text-lg py-10"
+                    >
+                        <Link
+                            href="/player"
+                            class="bg-gradient-to-r from-brand-blue to-brand-pink py-3 md:w-1/2 px-10 text-center rounded-2xl border-2 border-white font-bold hover:scale-105 transition-transform"
+                        >
+                            GO TO DASHBOARD
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<style scoped>
+@font-face {
+    font-family: "GamingSporty";
+    src: url("../../../fonts/GamingSporty.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
+
+.font-gaming {
+    font-family: "GamingSporty", sans-serif;
+}
+</style>

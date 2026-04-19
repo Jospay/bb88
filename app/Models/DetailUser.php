@@ -16,6 +16,7 @@ class DetailUser extends Model
         'full_name',
         'username',
         'email',
+        'password', // Added password here
         'mobile_number',
         'account_type',
         'qrcode_name',
@@ -23,6 +24,7 @@ class DetailUser extends Model
         'verification_account',
         'size_shirt',
         'status',
+        'token',
     ];
 
     public function user()
