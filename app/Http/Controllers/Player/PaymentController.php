@@ -220,9 +220,18 @@ class PaymentController extends Controller
     <div style="background-color: #e6f7ff; padding: 15px; border-left: 5px solid #007bff; margin: 25px 0;">
         <strong style="color: #0056b3;">Next Steps:</strong>
         <ul style="margin-top: 10px; margin-bottom: 10px;">
-            <li>There is no app required at this time.</li>
             <li>Further instructions and updates will be sent via email or SMS.</li>
-            <li>Please wait for the next announcement regarding QR codes, schedules, and claiming details.</li>
+            <li>Your team members who processed the payment may log in to access the QR code, which will be used for claiming team shirts.</li>
+            <li>
+                To access your account, click this link:
+                <strong style="color: #007bff;">
+                    <a href="https://mobaebz.bb88advertising.com/login" target="_blank" style="color: #007bff; text-decoration: underline;">
+                        https://mobaebz.bb88advertising.com/login
+                    </a>
+                </strong>.
+                Use your team email.
+            </li>
+            <li>Please wait for the official announcement regarding QR code activation, schedules, and claiming details.</li>
         </ul>
     </div>
     <p>Thank you for registering! We look forward to seeing you at the event.</p>

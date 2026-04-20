@@ -1551,21 +1551,13 @@ function acceptPolicy() {
                                     )
                                 }}.
 
-                                <strong
-                                    >No payment is required
-                                    <span class="hidden sm:inline">
-                                        <br />
-                                    </span>
-                                    right now,</strong
-                                >
-                                once the team qualifies, a separate email will
-                                be sent with instructions for the full team
-                                payment.
+                                <br />
                                 <span class="block mt-1 italic text-[#f3f3f3]">
-                                    * Reserve players do not have an included
-                                    shirt; they only receive one and become
-                                    eligible to play if a main player is
-                                    replaced.
+                                    * Reserve players are also included in the
+                                    shirt allocation and will receive one.
+                                    <br />
+                                    They will only become eligible to play if
+                                    they replace a main player.
                                 </span>
                             </p>
                         </div>

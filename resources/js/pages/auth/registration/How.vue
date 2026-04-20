@@ -630,21 +630,12 @@ const registerTeam = () => {
                                     )
                                 }}.
 
-                                <strong
-                                    >No payment is required
-                                    <span class="hidden sm:inline">
-                                        <br />
-                                    </span>
-                                    right now,</strong
-                                >
-                                once the team qualifies, a separate email will
-                                be sent with instructions for the full team
-                                payment.
                                 <span class="block mt-1 italic text-[#f3f3f3]">
-                                    * Reserve players do not have an included
-                                    shirt; they only receive one and become
-                                    eligible to play if a main player is
-                                    replaced.
+                                    * Reserve players are also included in the
+                                    shirt allocation and will receive one.
+                                    <br />
+                                    They will only become eligible to play if
+                                    they replace a main player.
                                 </span>
                             </p>
                         </div>
@@ -668,34 +659,184 @@ const registerTeam = () => {
                         />
                     </div>
 
-                    <!-- <div class="p-2 border-2 border-white mt-4">
-                        <p class="text-sm text-center py-2 mb-1 text-white">
-                            Once you see the
-                            <strong>“Preparing Success Page”</strong>, it means
-                            your registration is almost complete and the system
-                            is finishing the sending process.
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p
+                            class="text-sm text-center py-2 mb-1 text-white leading-relaxed"
+                        >
+                            This page confirms that your registration has been
+                            successfully completed. To continue, log in using
+                            your registered team email and follow the steps
+                            below to proceed with your payment.
                         </p>
+
                         <img
-                            src="@/assets/loading_success.JPG"
+                            src="@/assets/teams.JPG"
                             class="img-fluid rounded-2xl"
                             alt="Registration Success"
                         />
-                    </div> -->
+                    </div>
 
                     <div class="p-2 border-2 border-white mt-4">
                         <p class="text-sm text-center py-2 mb-1 text-white">
-                            This is the final page confirming your registration
-                            is successful! Please check your
-                            <strong>Email</strong> (for the summary) and
-                            <strong>SMS</strong>
-                            to confirm you have received your official
-                            registration notice.
+                            To generate your password, please follow the steps
+                            below:
+                        </p>
+
+                        <div class="grid grid-cols-12 gap-5">
+                            <div class="col-span-4 border p-2">
+                                <p
+                                    class="text-sm text-center py-2 mb-1 text-white"
+                                >
+                                    Click the "Forgot Password"
+                                </p>
+                                <img
+                                    src="@/assets/playerLogin.JPG"
+                                    class="img-fluid rounded-2xl"
+                                    alt="Forgot Password Step"
+                                />
+                            </div>
+
+                            <div class="col-span-4 border p-2">
+                                <p
+                                    class="text-sm text-center py-2 mb-1 text-white"
+                                >
+                                    Enter your registered team email and click
+                                    "Send Reset Link" button.
+                                </p>
+                                <img
+                                    src="@/assets/reset.JPG"
+                                    class="img-fluid rounded-2xl"
+                                    alt="Reset Password Step"
+                                />
+                            </div>
+
+                            <div class="col-span-4 border p-2">
+                                <p
+                                    class="text-sm text-center py-2 mb-1 text-white"
+                                >
+                                    Once submitted, check your email for the
+                                    password reset notification.
+                                </p>
+                                <img
+                                    src="@/assets/successRequest.JPG"
+                                    class="img-fluid rounded-2xl"
+                                    alt="Email Sent Confirmation"
+                                />
+                            </div>
+
+                            <div class="col-span-4 border p-2">
+                                <p
+                                    class="text-sm text-center py-2 mb-1 text-white"
+                                >
+                                    After receiving the email, click the "Verify
+                                    and Create a New Password" button.
+                                </p>
+                                <img
+                                    src="@/assets/email.JPG"
+                                    class="img-fluid rounded-2xl"
+                                    alt="Email Verification Step"
+                                />
+                            </div>
+
+                            <div class="col-span-4 border p-2">
+                                <p
+                                    class="text-sm text-center py-2 mb-1 text-white"
+                                >
+                                    Create a strong password and confirm it to
+                                    complete the process.
+                                </p>
+                                <img
+                                    src="@/assets/createPass.JPG"
+                                    class="img-fluid rounded-2xl"
+                                    alt="Create Password Step"
+                                />
+                            </div>
+
+                            <div class="col-span-4 border p-2">
+                                <p
+                                    class="text-sm text-center py-2 mb-1 text-white"
+                                >
+                                    Once your password is successfully updated,
+                                    click "Continue to Dashboard" to proceed
+                                    with your payment.
+                                </p>
+                                <img
+                                    src="@/assets/passwordUpdated.JPG"
+                                    class="img-fluid rounded-2xl"
+                                    alt="Password Updated Success"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            This is your dashboard, where you can view your team
+                            list and proceed with your registration payment.
+                            Click the "Pay Now" button to continue.
                         </p>
 
                         <img
-                            src="@/assets/success.jpeg"
+                            src="@/assets/dashTeam.JPG"
                             class="img-fluid rounded-2xl"
-                            alt="Registration Success"
+                            alt="Dashboard Team List"
+                        />
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            This is the payment page, where you can choose your
+                            preferred payment method to complete your
+                            registration.
+                        </p>
+
+                        <img
+                            src="@/assets/paymongo_choose.JPG"
+                            class="img-fluid rounded-2xl"
+                            alt="Payment Method Selection"
+                        />
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            Once your payment is successful, click the "Return
+                            to Merchant" button and wait for confirmation. A
+                            verification email will be sent to confirm that your
+                            payment has been received.
+                        </p>
+
+                        <img
+                            src="@/assets/paymentReceived.JPG"
+                            class="img-fluid rounded-2xl"
+                            alt="Payment Confirmation Success"
+                        />
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            This confirms that your payment was successful.
+                            Please check your
+                            <strong>Email</strong> to verify that you have
+                            received your official registration notice.
+                        </p>
+
+                        <img
+                            src="@/assets/paymentSuccess.JPG"
+                            class="img-fluid rounded-2xl"
+                            alt="Payment Success Confirmation"
+                        />
+                    </div>
+
+                    <div class="p-2 border-2 border-white mt-4">
+                        <p class="text-sm text-center py-2 mb-1 text-white">
+                            This is a sample of the email you will receive after
+                            successful registration.
+                        </p>
+
+                        <img
+                            src="@/assets/congrats.JPG"
+                            class="img-fluid rounded-2xl"
+                            alt="Email Sample Congratulations"
                         />
                     </div>
                 </div>
