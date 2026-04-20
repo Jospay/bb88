@@ -271,7 +271,13 @@ class RegistrationController extends Controller
             </tr>
             <tr>
                 <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Status:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong style="color: #007bff;">PENDING QUALIFICATION</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">
+                    Pending your payment. To pay for your registration, click this link:
+                    <strong style="color: #007bff;">
+                        <a href="https://mobaebz.bb88advertising.com/login" target="_blank" style="color: #007bff; text-decoration: underline;">https://mobaebz.bb88advertising.com/login</a>.
+                    </strong>
+                    Use your team email and click "Forgot Password" to generate your password.
+                </td>
             </tr>
             <tr>
                 <td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Main Players:</strong></td>
@@ -288,8 +294,8 @@ class RegistrationController extends Controller
         <div style="background-color: #e6f7ff; padding: 15px; border-left: 5px solid #007bff; margin: 25px 0;">
             <strong style="color: #0056b3;">Important Notes:</strong>
             <ul style="margin-top: 10px; margin-bottom: 10px;">
-                <li><strong>No payment is required right now.</strong></li>
-                <li>total payment to be paid is ₱' . number_format($totalPayment, 2) . ' after the team qualifies, a separate email will be sent with instructions for the full team payment.</li>
+                <li>Total payment to be paid is <strong>₱' . number_format($totalPayment, 2) . '</strong>.</li>
+                <li>At least one player must take responsibility for the registration payment. To create a password, one player should click "Forgot Password" and follow the steps. Once successful, they can access the dashboard to see the payment process.</li>
             </ul>
         </div>
 

@@ -1,6 +1,6 @@
 <script setup>
-import { useForm } from "@inertiajs/vue3";
-import { ref } from "vue";
+import { useForm, usePage } from "@inertiajs/vue3";
+import { ref, computed, watch } from "vue";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -11,135 +11,127 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-import { toast } from "vue-sonner";
+import Toast from "@/components/Toast.vue";
+import { Eye, EyeOff, Loader2 } from "lucide-vue-next"; // Added Loader2 for loading icon
 
 const props = defineProps({
-    admin: Object,
+    player: Object,
 });
+
+const page = usePage();
+
+// --- CUSTOM TOAST LOGIC ---
+const notifications = ref([]);
+
+const addNotification = (message, type = "success") => {
+    const id = Date.now();
+    notifications.value.push({ id, message, type });
+};
+
+const removeNotification = (id) => {
+    notifications.value = notifications.filter((n) => n.id !== id);
+};
+
+// Automatically trigger toast if server sends success/error flash
+watch(
+    () => page.props.flash.success,
+    (msg) => {
+        if (msg) addNotification(msg, "success");
+    },
+    { immediate: true },
+);
+
+watch(
+    () => page.props.flash.error,
+    (msg) => {
+        if (msg) addNotification(msg, "error");
+    },
+);
+// --------------------------
 
 const showProfileConfirm = ref(false);
 const showPasswordConfirm = ref(false);
 
-// Profile form
+const showCurrentPw = ref(false);
+const showNewPw = ref(false);
+const showConfirmPw = ref(false);
+const isNewPasswordFocused = ref(false);
+
 const profileForm = useForm({
-    full_name: props.admin.full_name,
-    email: props.admin.email,
-    contact_number: props.admin.contact_number,
+    full_name: props.player.full_name,
+    email: props.player.email,
+    contact_number: props.player.contact_number,
 });
 
-// Password form
 const passwordForm = useForm({
     current_password: "",
     password: "",
     password_confirmation: "",
 });
 
-// Submit profile update
+const passwordRequirements = computed(() => [
+    {
+        label: "At least 8 characters long",
+        met: passwordForm.password.length >= 8,
+    },
+    {
+        label: "At least one uppercase letter",
+        met: /[A-Z]/.test(passwordForm.password),
+    },
+    {
+        label: "At least one lowercase letter",
+        met: /[a-z]/.test(passwordForm.password),
+    },
+    { label: "At least one number", met: /[0-9]/.test(passwordForm.password) },
+]);
+
+const allRequirementsMet = computed(() => {
+    return passwordRequirements.value.every((req) => req.met);
+});
+
 const submitProfileUpdate = () => {
     showProfileConfirm.value = false;
-    profileForm.patch("/admin/profile", { preserveScroll: true });
+    profileForm.patch("/player/profile", {
+        preserveScroll: true,
+        onSuccess: () => addNotification("Profile updated successfully!"),
+    });
 };
 
-// Submit password update
 const submitPasswordUpdate = () => {
     showPasswordConfirm.value = false;
-    passwordForm.put("/admin/profile/password", {
+    passwordForm.put("/player/profile/password", {
         preserveScroll: true,
         onSuccess: () => {
             passwordForm.reset();
-            toast.success("sucess");
+            addNotification("Password changed successfully!");
         },
+        onError: () =>
+            addNotification("Please check the password requirements.", "error"),
     });
 };
 </script>
 
 <template>
-    <div class="max-w-4xl mx-auto p-6 space-y-6">
-        <h2 class="text-2xl font-bold text-white">Account Settings</h2>
-
-        <!-- PROFILE -->
-        <div
-            class="bg-brand-dark-black border border-brand-border-black rounded-2xl p-6 shadow-2xl"
-        >
-            <h3 class="text-xl font-semibold text-white mb-4">
-                Profile Information
-            </h3>
-
-            <form @submit.prevent="showProfileConfirm = true" class="space-y-5">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="text-sm text-gray-400 block mb-1"
-                            >Full Name</label
-                        >
-                        <input
-                            v-model="profileForm.full_name"
-                            type="text"
-                            class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 text-white outline-none"
-                        />
-                        <p
-                            v-if="profileForm.errors.full_name"
-                            class="text-red-500 text-xs mt-1"
-                        >
-                            {{ profileForm.errors.full_name }}
-                        </p>
-                    </div>
-
-                    <div>
-                        <label class="text-sm text-gray-400 block mb-1"
-                            >Email Address</label
-                        >
-                        <input
-                            v-model="profileForm.email"
-                            type="email"
-                            class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 text-white outline-none"
-                        />
-                        <p
-                            v-if="profileForm.errors.email"
-                            class="text-red-500 text-xs mt-1"
-                        >
-                            {{ profileForm.errors.email }}
-                        </p>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="text-sm text-gray-400 block mb-1"
-                            >Contact Number</label
-                        >
-                        <input
-                            v-model="profileForm.contact_number"
-                            type="text"
-                            class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 text-white outline-none"
-                        />
-                        <p
-                            v-if="profileForm.errors.contact_number"
-                            class="text-red-500 text-xs mt-1"
-                        >
-                            {{ profileForm.errors.contact_number }}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-4">
-                    <button
-                        type="submit"
-                        :disabled="profileForm.processing"
-                        class="bg-brand-blue hover:opacity-90 text-white font-bold py-2 px-6 rounded-lg transition"
-                    >
-                        Save Changes
-                    </button>
-                    <span
-                        v-if="profileForm.recentlySuccessful"
-                        class="text-green-500 text-sm"
-                        >✓ Saved Successfully</span
-                    >
-                </div>
-            </form>
+    <div
+        aria-live="assertive"
+        class="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:p-6 z-999"
+    >
+        <div class="flex w-full flex-col items-center space-y-4 sm:items-end">
+            <Toast
+                v-for="n in notifications"
+                :key="n.id"
+                :message="n.message"
+                :type="n.type"
+                @close="removeNotification(n.id)"
+            />
         </div>
+    </div>
 
-        <!-- PASSWORD -->
+    <div
+        class="max-w-3xl mx-auto space-y-6 grid place-items-center h-full pb-20"
+    >
         <div
-            class="bg-brand-dark-black border border-brand-border-black rounded-2xl p-6 shadow-2xl"
+            class="bg-brand-dark-black border border-brand-border-black rounded-2xl p-6 w-full shadow-2xl"
         >
             <h3 class="text-xl font-semibold text-white mb-4">Security</h3>
 
@@ -147,16 +139,28 @@ const submitPasswordUpdate = () => {
                 @submit.prevent="showPasswordConfirm = true"
                 class="space-y-5"
             >
-                <div class="max-w-md space-y-4">
+                <div class="space-y-4">
                     <div>
                         <label class="text-sm text-gray-400 block mb-1"
                             >Current Password</label
                         >
-                        <input
-                            v-model="passwordForm.current_password"
-                            type="password"
-                            class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 text-white outline-none"
-                        />
+                        <div class="relative">
+                            <input
+                                v-model="passwordForm.current_password"
+                                :type="showCurrentPw ? 'text' : 'password'"
+                                class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 pr-10 text-white outline-none focus:border-brand-blue"
+                            />
+                            <button
+                                type="button"
+                                @click="showCurrentPw = !showCurrentPw"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                            >
+                                <component
+                                    :is="showCurrentPw ? EyeOff : Eye"
+                                    class="w-5 h-5"
+                                />
+                            </button>
+                        </div>
                         <p
                             v-if="passwordForm.errors.current_password"
                             class="text-red-500 text-xs mt-1"
@@ -169,14 +173,47 @@ const submitPasswordUpdate = () => {
                         <label class="text-sm text-gray-400 block mb-1"
                             >New Password</label
                         >
-                        <input
-                            v-model="passwordForm.password"
-                            type="password"
-                            class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 text-white outline-none"
-                        />
+                        <div class="relative">
+                            <input
+                                v-model="passwordForm.password"
+                                :type="showNewPw ? 'text' : 'password'"
+                                @focus="isNewPasswordFocused = true"
+                                @blur="isNewPasswordFocused = false"
+                                class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 pr-10 text-white outline-none focus:border-brand-blue"
+                            />
+                            <button
+                                type="button"
+                                @click="showNewPw = !showNewPw"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                            >
+                                <component
+                                    :is="showNewPw ? EyeOff : Eye"
+                                    class="w-5 h-5"
+                                />
+                            </button>
+                        </div>
+
+                        <div
+                            v-if="isNewPasswordFocused && !allRequirementsMet"
+                            class="mt-3 p-3 bg-black/30 rounded-lg border border-brand-border-black space-y-1"
+                        >
+                            <div
+                                v-for="req in passwordRequirements"
+                                :key="req.label"
+                                class="flex items-center text-xs transition-colors duration-300"
+                                :class="
+                                    req.met ? 'text-green-400' : 'text-gray-500'
+                                "
+                            >
+                                <span class="mr-2">{{
+                                    req.met ? "✓" : "○"
+                                }}</span>
+                                {{ req.label }}
+                            </div>
+                        </div>
                         <p
                             v-if="passwordForm.errors.password"
-                            class="text-red-500 text-xs mt-1"
+                            class="text-red-500 text-xs mt-2"
                         >
                             {{ passwordForm.errors.password }}
                         </p>
@@ -186,30 +223,44 @@ const submitPasswordUpdate = () => {
                         <label class="text-sm text-gray-400 block mb-1"
                             >Confirm New Password</label
                         >
-                        <input
-                            v-model="passwordForm.password_confirmation"
-                            type="password"
-                            class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 text-white outline-none"
-                        />
+                        <div class="relative">
+                            <input
+                                v-model="passwordForm.password_confirmation"
+                                :type="showConfirmPw ? 'text' : 'password'"
+                                class="w-full bg-brand-light-black border border-brand-border-black rounded-lg p-2.5 pr-10 text-white outline-none focus:border-brand-blue"
+                            />
+                            <button
+                                type="button"
+                                @click="showConfirmPw = !showConfirmPw"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                            >
+                                <component
+                                    :is="showConfirmPw ? EyeOff : Eye"
+                                    class="w-5 h-5"
+                                />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <button
                     type="submit"
                     :disabled="passwordForm.processing"
-                    class="bg-brand-blue hover:opacity-90 text-white font-bold py-2 px-6 rounded-lg transition"
+                    class="bg-brand-blue hover:opacity-90 disabled:opacity-50 text-white font-bold py-2 px-6 rounded-lg transition flex items-center gap-2"
                 >
-                    Update Password
+                    <Loader2
+                        v-if="passwordForm.processing"
+                        class="w-4 h-4 animate-spin"
+                    />
+                    {{
+                        passwordForm.processing
+                            ? "Updating..."
+                            : "Update Password"
+                    }}
                 </button>
-                <span
-                    v-if="passwordForm.recentlySuccessful"
-                    class="text-green-500 text-sm ml-4"
-                    >✓ Password Updated</span
-                >
             </form>
         </div>
 
-        <!-- PROFILE CONFIRM -->
         <AlertDialog
             :open="showProfileConfirm"
             @update:open="showProfileConfirm = $event"
@@ -219,15 +270,14 @@ const submitPasswordUpdate = () => {
             >
                 <AlertDialogHeader>
                     <AlertDialogTitle>Confirm Profile Update?</AlertDialogTitle>
-                    <AlertDialogDescription class="text-gray-400">
-                        Please confirm that you want to save the changes to your
-                        profile.
-                    </AlertDialogDescription>
+                    <AlertDialogDescription class="text-gray-400"
+                        >Please confirm that you want to save the changes to
+                        your profile.</AlertDialogDescription
+                    >
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel
-                        type="button"
-                        class="bg-gray-800 text-white border-none"
+                        class="bg-gray-800 text-white border-none hover:bg-gray-700"
                         >Cancel</AlertDialogCancel
                     >
                     <AlertDialogAction
@@ -241,7 +291,6 @@ const submitPasswordUpdate = () => {
             </AlertDialogContent>
         </AlertDialog>
 
-        <!-- PASSWORD CONFIRM -->
         <AlertDialog
             :open="showPasswordConfirm"
             @update:open="showPasswordConfirm = $event"
@@ -253,21 +302,21 @@ const submitPasswordUpdate = () => {
                     <AlertDialogTitle
                         >Confirm Password Change?</AlertDialogTitle
                     >
-                    <AlertDialogDescription class="text-gray-400">
-                        Are you sure you want to change your password? You will
-                        need to use the new one for your next login.
-                    </AlertDialogDescription>
+                    <AlertDialogDescription class="text-gray-400"
+                        >Are you sure you want to change your password? You will
+                        need to use the new one for your next
+                        login.</AlertDialogDescription
+                    >
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel
-                        type="button"
-                        class="bg-gray-800 text-white border-none"
+                        class="bg-gray-800 text-white border-none hover:bg-gray-700"
                         >Cancel</AlertDialogCancel
                     >
                     <AlertDialogAction
                         @click="submitPasswordUpdate"
                         :disabled="passwordForm.processing"
-                        class="bg-red-600 hover:bg-red-700"
+                        class="bg-red-600 hover:bg-red-700 text-white"
                     >
                         Change Password
                     </AlertDialogAction>

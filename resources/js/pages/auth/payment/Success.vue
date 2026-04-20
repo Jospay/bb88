@@ -75,7 +75,9 @@ onMounted(() => {
                         <i> THANK YOU FOR YOUR SUCCESSFUL REGISTRATION </i>
                     </h1>
 
-                    <p class="text-white text-center text-lg px-4 uppercase">
+                    <p
+                        class="text-white text-center text-lg px-4 uppercase leading-relaxed"
+                    >
                         TOTAL PAYMENT TO BE PAID IS ₱{{
                             Number(props.totalPayment).toLocaleString(
                                 undefined,
@@ -85,19 +87,24 @@ onMounted(() => {
                                 },
                             )
                         }}
-                        AFTER THE TEAM QUALIFIES,
-                        <br class="hidden sm:block" />
-                        A SEPARATE EMAIL WILL BE SENT WITH INSTRUCTIONS FOR THE
-                        FULL TEAM PAYMENT.
+                        <br />
+                        PENDING YOUR PAYMENT. TO PAY YOUR REGISTRATION, CLICK
+                        THE LOGIN LINK BELOW. USE YOUR TEAM EMAIL AND CLICK
+                        "FORGOT PASSWORD" TO GENERATE YOUR PASSWORD.
                     </p>
 
                     <div
-                        class="text-[#DCDBE0] flex justify-center text-lg py-10"
+                        class="text-[#DCDBE0] flex flex-col items-center gap-4 py-10"
                     >
                         <a
-                            href="/"
+                            href="/login"
                             class="bg-gradient-to-r from-brand-blue to-brand-pink py-3 md:w-1/2 px-10 text-center rounded-2xl border-2 border-white font-bold"
-                            >RETURN HOME</a
+                            >LOGIN TO PAY</a
+                        >
+                        <a
+                            href="/"
+                            class="text-white underline text-sm uppercase tracking-widest opacity-80 hover:opacity-100"
+                            >Return Home</a
                         >
                     </div>
                 </div>

@@ -6,21 +6,13 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
 
 class PaymentSuccessController extends Controller
 {
     public function success(Request $request)
     {
         $sessionId = $request->query('id');
-        $teamId = $request->query('team_id');
         $authId = auth('player')->id();
-
-        if (!$sessionId && $teamId) {
-            $sessionId = User::where('id', $teamId)
-                ->where('id', $authId)
-                ->value('paymongo_checkout_session_id');
-        }
 
         if (!$sessionId) {
             return redirect('/player')->with('error', 'Payment session ID missing.');

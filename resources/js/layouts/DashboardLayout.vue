@@ -85,7 +85,10 @@ const activeLinks = computed(() => {
                     <img src="@/assets/footer logo.png" class="h-7" />
                 </div>
 
-                <Link :href="isAdmin ? '/admin/profile' : '/player/profile'">
+                <Link
+                    :href="isAdmin ? '/admin/profile' : '/player/profile'"
+                    class="pr-5"
+                >
                     <button
                         class="text-white bg-brand-blue/20 border border-brand-blue/50 px-4 py-1 rounded-md hover:bg-brand-blue/30 transition"
                     >

@@ -67,12 +67,8 @@ class ForgotProcessController extends Controller
                 'password' => Hash::make($request->password),
                 'token' => null
             ]);
+        Auth::guard('player')->loginUsingId($player->user_id);
 
-        // 3. Log the user in automatically
-        // This ensures they are authenticated when they redirect to /player
-        Auth::loginUsingId($player->user_id);
-
-        // 4. Return back so the Vue 'onSuccess' modal can pop up
         return back();
     }
 }

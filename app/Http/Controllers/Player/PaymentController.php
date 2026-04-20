@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Inertia\Inertia; // Added for Inertia::location
+use Inertia\Inertia;
 
 class PaymentController extends Controller
 {
@@ -30,8 +30,6 @@ class PaymentController extends Controller
                 $user->email,
                 $user->team_name
             );
-
-            Log::info("PayMongo Session Created: " . $session['id']);
 
             $user->update([
                 'paymongo_checkout_session_id' => $session['id']
@@ -50,7 +48,7 @@ class PaymentController extends Controller
         $formattedAmount = (int)($amount * 100);
         $teamId = $user->id;
 
-        $successUrl = url('/player/payment/success') . '?team_id=' . $teamId;
+        $successUrl = route('player.payment.verify') . '?team_id=' . $teamId;
         $failureUrl = url('/player');
 
         $payload = [
@@ -83,110 +81,71 @@ class PaymentController extends Controller
             ->post('https://api.paymongo.com/v1/checkout_sessions', $payload);
 
         if ($response->failed()) {
-            Log::error("PayMongo API Failure: " . $response->body());
             throw new \Exception('PayMongo Error: ' . ($response->json()['errors'][0]['detail'] ?? 'Unknown Error'));
         }
 
         return $response->json()['data'];
     }
 
-
     public function handlePaymentSuccess(Request $request)
     {
         $teamId = $request->query('team_id');
-
-        if (!$teamId) {
-            return redirect('/player')->with('error', 'Payment verification failed.');
-        }
+        if (!$teamId) return redirect('/player')->with('error', 'Verification failed.');
 
         $user = User::find($teamId);
+        if (!$user) return redirect('/player')->with('error', 'Team not found.');
 
-        if (!$user) {
-            return redirect('/player')->with('error', 'Team not found.');
+        if ($user->transaction_status === 'paid') {
+            return redirect()->route('player.payment.success', ['id' => $user->paymongo_checkout_session_id]);
         }
 
         $sessionId = $user->paymongo_checkout_session_id;
-
-        // ✅ IMPORTANT: STOP DUPLICATE EXECUTION
-        if ($user->transaction_status === 'paid') {
-            return redirect()->route('player.payment.success', ['id' => $sessionId]);
-        }
-
-        if (!$sessionId) {
-            return redirect('/player')->with('error', 'Missing session ID.');
-        }
-
         try {
-            DB::beginTransaction();
-
-            $user = User::lockForUpdate()->find($teamId);
-
             $response = Http::withBasicAuth(env('PAYMONGO_SECRET_KEY'), '')
                 ->get("https://api.paymongo.com/v1/checkout_sessions/{$sessionId}?include=payment_intent");
 
-            $responseData = $response->json();
-
-            if (!isset($responseData['data'])) {
-                throw new \Exception('Invalid PayMongo response.');
-            }
-
-            $sessionData = $responseData['data'];
-
+            $sessionData = $response->json()['data'];
             $paymentIntent = $sessionData['attributes']['payment_intent'] ?? null;
-            $paymentStatus = $paymentIntent['attributes']['status'] ?? 'pending';
+            $status = $paymentIntent['attributes']['status'] ?? 'pending';
 
-            $statusMap = [
-                'succeeded' => 'paid',
-                'paid' => 'paid',
-                'processing' => 'pending_payment',
-                'awaiting_payment_method' => 'pending_payment',
-                'pending' => 'pending_payment',
-            ];
-
-            $finalStatus = $statusMap[$paymentStatus] ?? 'pending_payment';
-
-            if ($finalStatus === 'paid') {
-
-                // ✅ CHECK AGAIN (double safety)
-                if ($user->transaction_status !== 'paid') {
-
-                    $user->update(['transaction_status' => 'paid']);
-
-                    // earnings
-                    $percentageTypes = PercentageType::all();
-                    $baseAmount = $user->total_payment ?? 0;
-
-                    if ($percentageTypes->isNotEmpty() && $baseAmount > 0) {
-                        foreach ($percentageTypes as $type) {
-                            PercentageBreakdowns::create([
-                                'user_id' => $user->id,
-                                'percentage_type_id' => $type->id,
-                                'total_earning' => $baseAmount * ($type->value / 100),
-                            ]);
-                        }
-                    }
-
-                    // ✅ SEND EMAIL ONLY ONCE
-                    $this->processNotifications($user);
-                }
-
-                DB::commit();
-
+            if ($status === 'succeeded' || $status === 'paid') {
+                $this->finalizeRegistration($user, $sessionId);
                 return redirect()->route('player.payment.success', ['id' => $sessionId]);
-
-            } else {
-
-                $user->update(['transaction_status' => $finalStatus]);
-
-                DB::commit();
-
-                return redirect('/player')->with('status', "Payment status: $finalStatus.");
             }
 
+            return redirect('/player')->with('status', 'Payment is still processing.');
         } catch (\Exception $e) {
-            DB::rollback();
             return redirect('/player')->with('error', 'Verification error.');
         }
+    }
+
+    public function finalizeRegistration(User $user, $sessionId)
+    {
+        DB::transaction(function () use ($user, $sessionId) {
+            $user = User::lockForUpdate()->find($user->id);
+
+            if ($user->transaction_status === 'paid') return;
+
+            $user->update([
+                'transaction_status' => 'paid',
+                'paymongo_checkout_session_id' => $sessionId
+            ]);
+
+            $percentageTypes = PercentageType::all();
+            $baseAmount = $user->total_payment ?? 0;
+
+            if ($percentageTypes->isNotEmpty() && $baseAmount > 0) {
+                foreach ($percentageTypes as $type) {
+                    PercentageBreakdowns::create([
+                        'user_id' => $user->id,
+                        'percentage_type_id' => $type->id,
+                        'total_earning' => $baseAmount * ($type->value / 100),
+                    ]);
+                }
+            }
+
+            $this->processNotifications($user);
+        });
     }
 
     protected function processNotifications(User $user)
@@ -194,62 +153,40 @@ class PaymentController extends Controller
         $allDetails = DetailUser::where('user_id', $user->id)->get();
         $currentDate = Carbon::now()->format('F d, Y');
 
-        $playerDetails = $allDetails->where('account_type', 'Player');
-        $reserveDetails = $allDetails->where('account_type', 'Reserve');
-        $shirtDetails = $allDetails->where('account_type', 'Shirt');
-
         $htmlBody = $this->createConfirmationEmailBody(
             $user->team_name,
             $currentDate,
-            $playerDetails,
-            $reserveDetails,
-            $shirtDetails
+            $allDetails->where('account_type', 'Player'),
+            $allDetails->where('account_type', 'Reserve'),
+            $allDetails->where('account_type', 'Shirt')
         );
 
-        // ✅ STRONG UNIQUE (fix duplicates even if spacing/case issue)
-        $allUniqueEmails = $allDetails
-            ->pluck('email')
-            ->filter()
-            ->map(fn($email) => strtolower(trim($email)))
-            ->unique()
-            ->values();
+        $emails = $allDetails->pluck('email')->filter()
+            ->map(fn($e) => strtolower(trim($e)))->unique();
 
-        foreach ($allUniqueEmails as $recipientEmail) {
-            Mail::html($htmlBody, function ($mail) use ($recipientEmail, $user) {
-                $mail->to($recipientEmail)
-                    ->subject('BB 88 Registration Confirmed: ' . $user->team_name);
+        foreach ($emails as $email) {
+            Mail::html($htmlBody, function ($mail) use ($email, $user) {
+                $mail->to($email)->subject('BB 88 Registration Confirmed: ' . $user->team_name);
             });
         }
     }
 
-    // DESIGN KEPT EXACTLY THE SAME
     protected function createConfirmationEmailBody(string $teamName, string $date, Collection $playerDetails, Collection $reserveDetails, Collection $shirtDetails): string
     {
-        $playerListHtml = '';
-        if ($playerDetails->isNotEmpty()) {
-            foreach ($playerDetails as $detail) {
-                $playerListHtml .= '<li>' . htmlspecialchars($detail->full_name) . '</li>';
-            }
-        } else {
-            $playerListHtml = '<li>No players registered.</li>';
-        }
+        $playerListHtml = $playerDetails->isNotEmpty()
+            ? $playerDetails->map(fn($d) => '<li>'.htmlspecialchars($d->full_name).'</li>')->implode('')
+            : '<li>No players registered.</li>';
 
-        $reserveListHtml = '';
         $additionalReserveRow = '';
         if ($reserveDetails->isNotEmpty()) {
-            foreach ($reserveDetails as $detail) {
-                $reserveListHtml .= '<li>' . htmlspecialchars($detail->full_name) . '</li>';
-            }
-            $additionalReserveRow = '<tr><td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Reserve Players:</strong></td><td style="padding: 10px; border: 1px solid #ddd;"><ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">' . $reserveListHtml . '</ul></td></tr>';
+            $list = $reserveDetails->map(fn($d) => '<li>'.htmlspecialchars($d->full_name).'</li>')->implode('');
+            $additionalReserveRow = '<tr><td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Reserve Players:</strong></td><td style="padding: 10px; border: 1px solid #ddd;"><ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">' . $list . '</ul></td></tr>';
         }
 
-        $shirtListHtml = '';
         $additionalShirtRow = '';
         if ($shirtDetails->isNotEmpty()) {
-            foreach ($shirtDetails as $detail) {
-                $shirtListHtml .= '<li>' . htmlspecialchars($detail->full_name) . '</li>';
-            }
-            $additionalShirtRow = '<tr><td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Additional Shirts:</strong></td><td style="padding: 10px; border: 1px solid #ddd;"><ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">' . $shirtListHtml . '</ul></td></tr>';
+            $list = $shirtDetails->map(fn($d) => '<li>'.htmlspecialchars($d->full_name).'</li>')->implode('');
+            $additionalShirtRow = '<tr><td style="padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;"><strong>Additional Shirts:</strong></td><td style="padding: 10px; border: 1px solid #ddd;"><ul style="margin: 0; padding-left: 20px; list-style-type: decimal;">' . $list . '</ul></td></tr>';
         }
 
         return '<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
