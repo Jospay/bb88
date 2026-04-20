@@ -15,7 +15,6 @@ class WebhookController extends Controller
         $signature = $request->header('paymongo-signature');
         $webhookSecret = env('PAYMONGO_WEBHOOK_SECRET');
 
-        // 1. Verify the signature to ensure request is from PayMongo
         if ($signature && $webhookSecret) {
             $splitSignature = explode(',', $signature);
             $timestamp = str_replace('t=', '', $splitSignature[0]);
@@ -25,36 +24,27 @@ class WebhookController extends Controller
             $hash = hash_hmac('sha256', $baseString, $webhookSecret);
 
             if ($hash !== $li_signature) {
-                Log::error("PayMongo Webhook: Invalid Signature detected!");
+                Log::error("PayMongo Webhook: Invalid Signature!");
                 return response()->json(['error' => 'Invalid signature'], 401);
             }
         }
 
         $data = json_decode($payload, true);
-
-        // Correct path for the event type
         $type = $data['data']['attributes']['type'] ?? '';
 
-        Log::info("PayMongo Webhook Verified & Received Event: " . $type);
-
         if ($type === 'checkout_session.payment.paid') {
-            $sessionObject = $data['data']['attributes']['data'];
-
-            $sessionId = $sessionObject['id'] ?? null;
-            $teamId = $sessionObject['attributes']['metadata']['team_id'] ?? null;
-
-            Log::info("Processing Webhook for Team ID: " . $teamId);
+            // Resource data is inside attributes -> data
+            $resource = $data['data']['attributes']['data'];
+            $sessionId = $resource['id'];
+            $teamId = $resource['attributes']['metadata']['team_id'] ?? null;
 
             if ($teamId) {
                 $user = User::find($teamId);
-
-                // Only finalize if the user isn't already marked as paid
                 if ($user && $user->transaction_status !== 'paid') {
+                    // This runs the DB update and sends the EMAIL
                     (new PaymentController())->finalizeRegistration($user, $sessionId);
-                    Log::info("Successfully finalized registration via Webhook for Team: " . $user->team_name);
+                    Log::info("Webhook success for Team: " . $user->team_name);
                 }
-            } else {
-                Log::warning("PayMongo Webhook: No team_id found in metadata.");
             }
         }
 

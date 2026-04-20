@@ -12,22 +12,10 @@ class PaymentSuccessController extends Controller
     public function success(Request $request)
     {
         $sessionId = $request->query('id');
-        $authId = auth('player')->id();
+        $user = User::where('paymongo_checkout_session_id', $sessionId)->first();
 
-        if (!$sessionId) {
-            return redirect('/player')->with('error', 'Payment session ID missing.');
-        }
-
-        $user = User::where('paymongo_checkout_session_id', $sessionId)
-            ->where('id', $authId)
-            ->first();
-
-        if (!$user) {
-            return redirect('/player')->with('error', 'Unauthorized access.');
-        }
-
-        if ($user->transaction_status !== 'paid') {
-            return redirect()->route('player.payment.verify', ['team_id' => $user->id]);
+        if (!$user || $user->transaction_status !== 'paid') {
+            return redirect('/player');
         }
 
         return Inertia::render('player/Success', [

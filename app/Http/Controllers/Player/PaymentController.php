@@ -95,26 +95,33 @@ class PaymentController extends Controller
         $user = User::find($teamId);
         if (!$user) return redirect('/player')->with('error', 'Team not found.');
 
+        // FAST TRACK: If Webhook already finished the work, go to success immediately
         if ($user->transaction_status === 'paid') {
+            Log::info("Redirect: User {$user->id} already marked as paid via Webhook. Skipping API call.");
             return redirect()->route('player.payment.success', ['id' => $user->paymongo_checkout_session_id]);
         }
 
         $sessionId = $user->paymongo_checkout_session_id;
+
         try {
+            // Include payment_intent to verify the actual status
             $response = Http::withBasicAuth(env('PAYMONGO_SECRET_KEY'), '')
-                ->get("https://api.paymongo.com/v1/checkout_sessions/{$sessionId}?include=payment_intent");
+                ->get("https://api.paymongo.com/v1/checkout_sessions/{$sessionId}");
 
             $sessionData = $response->json()['data'];
-            $paymentIntent = $sessionData['attributes']['payment_intent'] ?? null;
-            $status = $paymentIntent['attributes']['status'] ?? 'pending';
+            $status = $sessionData['attributes']['status'] ?? 'active';
 
-            if ($status === 'succeeded' || $status === 'paid') {
+            // Check if the session is paid or has successful payments attached
+            $hasPayment = !empty($sessionData['attributes']['payments']);
+
+            if ($status === 'paid' || ($status === 'active' && $hasPayment)) {
                 $this->finalizeRegistration($user, $sessionId);
                 return redirect()->route('player.payment.success', ['id' => $sessionId]);
             }
 
-            return redirect('/player')->with('status', 'Payment is still processing.');
+            return redirect('/player')->with('status', 'Payment is still being processed by your provider.');
         } catch (\Exception $e) {
+            Log::error("Verification Error: " . $e->getMessage());
             return redirect('/player')->with('error', 'Verification error.');
         }
     }
@@ -122,6 +129,7 @@ class PaymentController extends Controller
     public function finalizeRegistration(User $user, $sessionId)
     {
         DB::transaction(function () use ($user, $sessionId) {
+            // Re-fetch with lock to prevent race conditions between Redirect and Webhook
             $user = User::lockForUpdate()->find($user->id);
 
             if ($user->transaction_status === 'paid') return;
@@ -131,6 +139,7 @@ class PaymentController extends Controller
                 'paymongo_checkout_session_id' => $sessionId
             ]);
 
+            // Handle earnings distribution
             $percentageTypes = PercentageType::all();
             $baseAmount = $user->total_payment ?? 0;
 
@@ -144,7 +153,9 @@ class PaymentController extends Controller
                 }
             }
 
+            // Trigger Emails
             $this->processNotifications($user);
+            Log::info("Finalized Registration for: " . $user->team_name);
         });
     }
 
@@ -165,9 +176,13 @@ class PaymentController extends Controller
             ->map(fn($e) => strtolower(trim($e)))->unique();
 
         foreach ($emails as $email) {
-            Mail::html($htmlBody, function ($mail) use ($email, $user) {
-                $mail->to($email)->subject('BB 88 Registration Confirmed: ' . $user->team_name);
-            });
+            try {
+                Mail::html($htmlBody, function ($mail) use ($email, $user) {
+                    $mail->to($email)->subject('BB 88 Registration Confirmed: ' . $user->team_name);
+                });
+            } catch (\Exception $e) {
+                Log::error("Mail fail for {$email}: " . $e->getMessage());
+            }
         }
     }
 
