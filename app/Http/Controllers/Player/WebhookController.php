@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
+use App\Http\Controllers\Player\PaymentController;
 
 class WebhookController extends Controller
 {
@@ -22,6 +23,7 @@ class WebhookController extends Controller
             if ($eventType === 'checkout_session.payment.paid') {
 
                 $attributes = $payload['data']['attributes']['data']['attributes'] ?? null;
+                $sessionId = $payload['data']['attributes']['data']['id'] ?? null;
 
                 if (!$attributes) {
                     return response()->json(['status' => 'invalid payload'], 400);
@@ -36,23 +38,20 @@ class WebhookController extends Controller
 
                 $user = User::find($teamId);
 
+                // Use the logic from PaymentController to avoid code duplication
                 if ($user && $user->transaction_status !== 'paid') {
 
-                    $user->update([
-                        'transaction_status' => 'paid'
-                    ]);
+                    (new PaymentController())->finalizeRegistration($user, $sessionId);
 
-                    Log::info("Webhook: Payment marked as PAID for Team ID: {$teamId}");
+                    Log::info("Webhook: Full Registration Finalized for Team ID: {$teamId}");
                 }
             }
 
-            // ✅ VERY IMPORTANT: Always return 200
+            // ✅ ALWAYS return 200 to stop PayMongo retries
             return response()->json(['status' => 'success'], 200);
 
         } catch (\Exception $e) {
             Log::error('Webhook Error: ' . $e->getMessage());
-
-            // Still return 200 to stop retries (optional but recommended)
             return response()->json(['status' => 'error handled'], 200);
         }
     }
