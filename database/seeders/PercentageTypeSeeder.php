@@ -14,25 +14,30 @@ class PercentageTypeSeeder extends Seeder
     public function run(): void
     {
         DB::table('percentage_types')->insert([
-            [
-                'name'       => 'tax',
+            // [
+            //     'name'       => 'tax',
+            //     'type'       => 'Percentage',
+            //     'value'      => 25,
+            // ],
+            // [
+            //     'name'       => 'bank',
+            //     'type'       => 'Percentage',
+            //     'value'      => 25,
+            // ],
+            // [
+            //     'name'       => 'markup_fee',
+            //     'type'       => 'Percentage',
+            //     'value'      => 25,
+            // ],
+            // [
+            //     'name'       => 'system_fee',
+            //     'type'       => 'Percentage',
+            //     'value'      => 25,
+            // ],
+             [
+                'name'       => 'Cinco',
                 'type'       => 'Percentage',
-                'value'      => 25,
-            ],
-            [
-                'name'       => 'bank',
-                'type'       => 'Percentage',
-                'value'      => 25,
-            ],
-            [
-                'name'       => 'markup_fee',
-                'type'       => 'Percentage',
-                'value'      => 25,
-            ],
-            [
-                'name'       => 'system_fee',
-                'type'       => 'Percentage',
-                'value'      => 25,
+                'value'      => 100,
             ],
         ]);
     }
