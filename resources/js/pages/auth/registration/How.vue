@@ -839,6 +839,16 @@ const registerTeam = () => {
                             alt="Email Sample Congratulations"
                         />
                     </div>
+
+                    <div class="flex justify-center sm:pt-14 pt-10 w-full">
+                        <a href="/register">
+                            <img
+                                src="@/assets/reg-button1.png"
+                                class="w-[500px] transition-transform duration-300 hover:scale-105"
+                                alt=""
+                            />
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
