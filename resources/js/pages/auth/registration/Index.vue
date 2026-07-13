@@ -358,7 +358,7 @@ function acceptPolicy() {
                         <h1
                             class="font-gaming text-center md:pt-0 pt-2 text-white text-lg relative z-10"
                         >
-                            Registration starts NOW until July 24, 2026
+                            Registration starts NOW until Aug 07, 2026
                         </h1>
                     </div>
                 </div>

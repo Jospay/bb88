@@ -38,7 +38,7 @@ import logoIcon from "@/assets/logo.png";
             </h1>
 
             <img
-                src="@/assets/moba_july31.jpg"
+                src="@/assets/m.jpg"
                 class="md:rounded-2xl rounded-xl mt-7"
                 alt=""
             />
