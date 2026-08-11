@@ -38,7 +38,7 @@ import logoIcon from "@/assets/logo.png";
             </h1>
 
             <img
-                src="@/assets/m.jpg"
+                src="@/assets/sept-28-30-2026.jpg"
                 class="md:rounded-2xl rounded-xl mt-7"
                 alt=""
             />
